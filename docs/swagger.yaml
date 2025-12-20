@@ -1,0 +1,278 @@
+basePath: /
+definitions:
+  models.CreateRankingRequest:
+    properties:
+      score:
+        description: 分数
+        example: 1000
+        minimum: 0
+        type: integer
+      username:
+        description: 用户名
+        example: player1
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - score
+    - username
+    type: object
+  models.ErrorResponse:
+    properties:
+      error:
+        description: 错误信息
+        example: invalid request
+        type: string
+    type: object
+  models.MessageResponse:
+    properties:
+      message:
+        description: 消息
+        example: success
+        type: string
+    type: object
+  models.Ranking:
+    description: 用户排名信息
+    properties:
+      created_at:
+        description: 创建时间
+        example: "2023-12-20T10:00:00Z"
+        type: string
+      id:
+        description: 主键ID
+        example: 1
+        type: integer
+      score:
+        description: 分数
+        example: 1000
+        type: integer
+      updated_at:
+        description: 更新时间
+        example: "2023-12-20T10:00:00Z"
+        type: string
+      username:
+        description: 用户名（唯一）
+        example: player1
+        type: string
+    type: object
+  models.RankingResponse:
+    properties:
+      created_at:
+        description: 创建时间
+        example: "2023-12-20T10:00:00Z"
+        type: string
+      id:
+        description: 主键ID
+        example: 1
+        type: integer
+      rank:
+        description: 排名
+        example: 1
+        type: integer
+      score:
+        description: 分数
+        example: 1000
+        type: integer
+      updated_at:
+        description: 更新时间
+        example: "2023-12-20T10:00:00Z"
+        type: string
+      username:
+        description: 用户名
+        example: player1
+        type: string
+    type: object
+  models.UpdateRankingRequest:
+    properties:
+      score:
+        description: 分数（可选）
+        example: 1500
+        minimum: 0
+        type: integer
+      username:
+        description: 用户名（可选）
+        example: player1
+        maxLength: 100
+        minLength: 1
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API支持
+    url: http://www.swagger.io/support
+  description: 这是一个用户排名管理系统的API文档
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: 排名系统API
+  version: "1.0"
+paths:
+  /api/rankings:
+    get:
+      description: 获取所有排名记录，按分数降序排列
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.RankingResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 获取排名列表
+      tags:
+      - rankings
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的用户排名记录
+      parameters:
+      - description: 排名信息
+        in: body
+        name: ranking
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateRankingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Ranking'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 创建新的排名记录
+      tags:
+      - rankings
+  /api/rankings/{id}:
+    delete:
+      description: 根据ID删除排名记录（软删除）
+      parameters:
+      - description: 排名ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 删除排名记录
+      tags:
+      - rankings
+    get:
+      description: 根据ID获取单个排名记录
+      parameters:
+      - description: 排名ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Ranking'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 获取单个排名
+      tags:
+      - rankings
+    put:
+      consumes:
+      - application/json
+      description: 根据ID更新排名记录
+      parameters:
+      - description: 排名ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新信息
+        in: body
+        name: ranking
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateRankingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Ranking'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 更新排名记录
+      tags:
+      - rankings
+  /api/rankings/top:
+    get:
+      description: 获取分数最高的前N名用户
+      parameters:
+      - default: 10
+        description: 前N名
+        in: query
+        name: top
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.RankingResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: 获取排行榜前N名
+      tags:
+      - rankings
+schemes:
+- http
+swagger: "2.0"
