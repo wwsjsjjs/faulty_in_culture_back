@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yourusername/ranking-api/internal/config"
 	"github.com/yourusername/ranking-api/internal/database"
 	"github.com/yourusername/ranking-api/internal/routes"
 
@@ -27,6 +28,17 @@ import (
 // @BasePath /
 // @schemes http
 func main() {
+	// 加载配置
+	configPath := "config.yaml"
+	if _, err := os.Stat(configPath); err == nil {
+		// 存在 config.yaml
+		importConfig := "github.com/yourusername/ranking-api/internal/config"
+		_ = importConfig // 避免未使用错误
+		config.LoadConfig(configPath)
+	} else {
+		log.Fatalf("Config file not found: %v", err)
+	}
+
 	// 初始化数据库
 	if err := database.InitDatabase(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)

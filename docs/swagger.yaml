@@ -1,14 +1,15 @@
 basePath: /
 definitions:
   models.CreateRankingRequest:
+    description: 创建新的用户排名
     properties:
       score:
-        description: 分数
+        description: 分数，必填，非负
         example: 1000
         minimum: 0
         type: integer
       username:
-        description: 用户名
+        description: 用户名，必填，1-100字符
         example: player1
         maxLength: 100
         minLength: 1
@@ -18,6 +19,7 @@ definitions:
     - username
     type: object
   models.ErrorResponse:
+    description: 通用错误响应结构
     properties:
       error:
         description: 错误信息
@@ -25,6 +27,7 @@ definitions:
         type: string
     type: object
   models.MessageResponse:
+    description: 通用消息响应结构
     properties:
       message:
         description: 消息
@@ -37,6 +40,7 @@ definitions:
       created_at:
         description: 创建时间
         example: "2023-12-20T10:00:00Z"
+        format: date-time
         type: string
       id:
         description: 主键ID
@@ -49,6 +53,7 @@ definitions:
       updated_at:
         description: 更新时间
         example: "2023-12-20T10:00:00Z"
+        format: date-time
         type: string
       username:
         description: 用户名（唯一）
@@ -56,10 +61,12 @@ definitions:
         type: string
     type: object
   models.RankingResponse:
+    description: 用户排名响应结构，包含排名信息
     properties:
       created_at:
         description: 创建时间
         example: "2023-12-20T10:00:00Z"
+        format: date-time
         type: string
       id:
         description: 主键ID
@@ -76,6 +83,7 @@ definitions:
       updated_at:
         description: 更新时间
         example: "2023-12-20T10:00:00Z"
+        format: date-time
         type: string
       username:
         description: 用户名
@@ -83,14 +91,15 @@ definitions:
         type: string
     type: object
   models.UpdateRankingRequest:
+    description: 更新用户排名
     properties:
       score:
-        description: 分数（可选）
+        description: 分数（可选），非负
         example: 1500
         minimum: 0
         type: integer
       username:
-        description: 用户名（可选）
+        description: 用户名（可选），1-100字符
         example: player1
         maxLength: 100
         minLength: 1

@@ -273,6 +273,7 @@ const docTemplate = `{
     },
     "definitions": {
         "models.CreateRankingRequest": {
+            "description": "创建新的用户排名",
             "type": "object",
             "required": [
                 "score",
@@ -280,13 +281,13 @@ const docTemplate = `{
             ],
             "properties": {
                 "score": {
-                    "description": "分数",
+                    "description": "分数，必填，非负",
                     "type": "integer",
                     "minimum": 0,
                     "example": 1000
                 },
                 "username": {
-                    "description": "用户名",
+                    "description": "用户名，必填，1-100字符",
                     "type": "string",
                     "maxLength": 100,
                     "minLength": 1,
@@ -295,6 +296,7 @@ const docTemplate = `{
             }
         },
         "models.ErrorResponse": {
+            "description": "通用错误响应结构",
             "type": "object",
             "properties": {
                 "error": {
@@ -305,6 +307,7 @@ const docTemplate = `{
             }
         },
         "models.MessageResponse": {
+            "description": "通用消息响应结构",
             "type": "object",
             "properties": {
                 "message": {
@@ -321,6 +324,7 @@ const docTemplate = `{
                 "created_at": {
                     "description": "创建时间",
                     "type": "string",
+                    "format": "date-time",
                     "example": "2023-12-20T10:00:00Z"
                 },
                 "id": {
@@ -336,6 +340,7 @@ const docTemplate = `{
                 "updated_at": {
                     "description": "更新时间",
                     "type": "string",
+                    "format": "date-time",
                     "example": "2023-12-20T10:00:00Z"
                 },
                 "username": {
@@ -346,11 +351,13 @@ const docTemplate = `{
             }
         },
         "models.RankingResponse": {
+            "description": "用户排名响应结构，包含排名信息",
             "type": "object",
             "properties": {
                 "created_at": {
                     "description": "创建时间",
                     "type": "string",
+                    "format": "date-time",
                     "example": "2023-12-20T10:00:00Z"
                 },
                 "id": {
@@ -371,6 +378,7 @@ const docTemplate = `{
                 "updated_at": {
                     "description": "更新时间",
                     "type": "string",
+                    "format": "date-time",
                     "example": "2023-12-20T10:00:00Z"
                 },
                 "username": {
@@ -381,16 +389,17 @@ const docTemplate = `{
             }
         },
         "models.UpdateRankingRequest": {
+            "description": "更新用户排名",
             "type": "object",
             "properties": {
                 "score": {
-                    "description": "分数（可选）",
+                    "description": "分数（可选），非负",
                     "type": "integer",
                     "minimum": 0,
                     "example": 1500
                 },
                 "username": {
-                    "description": "用户名（可选）",
+                    "description": "用户名（可选），1-100字符",
                     "type": "string",
                     "maxLength": 100,
                     "minLength": 1,
