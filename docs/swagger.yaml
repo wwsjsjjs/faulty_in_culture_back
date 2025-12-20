@@ -1,5 +1,23 @@
 basePath: /
 definitions:
+  dto.ChatMessageRequest:
+    properties:
+      content:
+        description: 消息内容
+        type: string
+      session_id:
+        description: 聊天会话ID
+        type: integer
+    required:
+    - content
+    - session_id
+    type: object
+  dto.ChatStartRequest:
+    properties:
+      title:
+        description: 聊天标题（可选）
+        type: string
+    type: object
   dto.CreateRankingRequest:
     properties:
       score:
@@ -16,6 +34,14 @@ definitions:
     required:
     - score
     - username
+    type: object
+  dto.SaveGameRequest:
+    properties:
+      data:
+        description: 存档数据（JSON字符串）
+        type: string
+    required:
+    - data
     type: object
   dto.SendMessageRequest:
     properties:
@@ -91,6 +117,41 @@ definitions:
         example: player1
         type: string
     type: object
+  vo.ChatHistoryResponse:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/vo.ChatMessageResponse'
+        type: array
+      session:
+        $ref: '#/definitions/vo.ChatSessionResponse'
+    type: object
+  vo.ChatMessageResponse:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      role:
+        type: string
+      session_id:
+        type: integer
+    type: object
+  vo.ChatSessionResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
   vo.ErrorResponse:
     properties:
       error:
@@ -147,6 +208,21 @@ definitions:
         example: player1
         type: string
     type: object
+  vo.SaveGameResponse:
+    properties:
+      created_at:
+        type: string
+      data:
+        type: string
+      id:
+        type: integer
+      slot_number:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
   vo.UserVO:
     properties:
       id:
@@ -170,6 +246,117 @@ info:
   title: 排名系统API
   version: "1.0"
 paths:
+  /api/chat/{session_id}:
+    get:
+      description: 获取指定会话的聊天历史
+      parameters:
+      - description: 会话ID
+        in: path
+        name: session_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/vo.ChatHistoryResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取聊天历史
+      tags:
+      - chat
+  /api/chat/send:
+    post:
+      consumes:
+      - application/json
+      description: 向指定会话发送消息，异步调用AI并通过WebSocket返回
+      parameters:
+      - description: 消息内容
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChatMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 发送消息给AI
+      tags:
+      - chat
+  /api/chat/sessions:
+    get:
+      description: 获取当前用户的所有聊天会话列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/vo.ChatSessionResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取用户所有聊天会话
+      tags:
+      - chat
+  /api/chat/start:
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的AI聊天会话
+      parameters:
+      - description: 聊天标题
+        in: body
+        name: data
+        schema:
+          $ref: '#/definitions/dto.ChatStartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/vo.ChatSessionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 开始新的聊天会话
+      tags:
+      - chat
   /api/login:
     post:
       consumes:
@@ -453,6 +640,120 @@ paths:
       summary: 用户注册
       tags:
       - user
+  /api/savegames:
+    get:
+      description: 获取当前用户的所有存档（最多6个）
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/vo.SaveGameResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取用户所有存档
+      tags:
+      - savegame
+  /api/savegames/{slot}:
+    delete:
+      description: 删除指定槽位的存档
+      parameters:
+      - description: 存档槽位(1-6)
+        in: path
+        name: slot
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/vo.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 删除存档
+      tags:
+      - savegame
+    get:
+      description: 获取当前用户指定槽位的存档
+      parameters:
+      - description: 存档槽位(1-6)
+        in: path
+        name: slot
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/vo.SaveGameResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 获取指定槽位的存档
+      tags:
+      - savegame
+    put:
+      consumes:
+      - application/json
+      description: 在指定槽位创建或更新存档
+      parameters:
+      - description: 存档槽位(1-6)
+        in: path
+        name: slot
+        required: true
+        type: integer
+      - description: 存档数据
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SaveGameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/vo.SaveGameResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 创建或更新存档
+      tags:
+      - savegame
   /api/send-message:
     post:
       consumes:

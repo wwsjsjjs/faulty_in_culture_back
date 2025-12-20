@@ -101,11 +101,11 @@ func (h *RankingHandler) GetRankings(c *gin.Context) {
 	}
 
 	offset := (page - 1) * limit
-	
+
 	// 构建缓存键
 	cacheKey := fmt.Sprintf("rankings:page:%d:limit:%d", page, limit)
 	var response []vo.RankingResponse
-	
+
 	// 尝试从缓存获取
 	cacheClient := cache.GetCache()
 	if cacheClient != nil {
@@ -245,7 +245,7 @@ func (h *RankingHandler) UpdateRanking(c *gin.Context) {
 // @Tags rankings
 // @Produce json
 // @Param id path int true "排名ID"
-// @Success 200 {object} vo.MessageResponse
+// @Success 200 {object} vo.SuccessMessageResponse
 // @Failure 404 {object} vo.ErrorResponse
 // @Router /api/rankings/{id} [delete]
 func (h *RankingHandler) DeleteRanking(c *gin.Context) {
@@ -276,7 +276,7 @@ func (h *RankingHandler) DeleteRanking(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, vo.MessageResponse{Message: "ranking deleted successfully"})
+	c.JSON(http.StatusOK, vo.SuccessMessageResponse{Message: "ranking deleted successfully"})
 }
 
 // GetTopRankings 获取前N名排名
@@ -300,7 +300,7 @@ func (h *RankingHandler) GetTopRankings(c *gin.Context) {
 	// 构建缓存键
 	cacheKey := fmt.Sprintf("rankings:top:%d", top)
 	var response []vo.RankingResponse
-	
+
 	// 尝试从缓存获取
 	cacheClient := cache.GetCache()
 	if cacheClient != nil {

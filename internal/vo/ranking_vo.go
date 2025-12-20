@@ -27,9 +27,9 @@ type ErrorResponse struct {
 	Error string `json:"error" example:"invalid request"`
 }
 
-// MessageResponse 消息响应 VO
+// SuccessMessageResponse 成功消息响应 VO
 // 用于 API 成功或通用消息返回
-type MessageResponse struct {
+type SuccessMessageResponse struct {
 	// Message 消息内容
 	Message string `json:"message" example:"success"`
 }

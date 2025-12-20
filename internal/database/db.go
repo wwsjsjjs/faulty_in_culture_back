@@ -36,7 +36,14 @@ func InitDatabase() error {
 	log.Println("Database connection established (MySQL)")
 
 	// 自动迁移数据库表结构
-	err = DB.AutoMigrate(&models.Ranking{}, &models.User{}, &models.Message{})
+	err = DB.AutoMigrate(
+		&models.Ranking{},
+		&models.User{},
+		&models.Message{},
+		&models.SaveGame{},
+		&models.ChatSession{},
+		&models.ChatMessage{},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %v", err)
 	}

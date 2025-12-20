@@ -89,8 +89,8 @@ func main() {
 	// 配置CORS（允许跨域请求）
 	router.Use(corsMiddleware())
 
-	// 设置路由
-	routes.SetupRoutes(router)
+	// 设置路由（传递 wsManager）
+	routes.SetupRoutes(router, wsManager)
 
 	// 获取端口
 	port := os.Getenv("PORT")

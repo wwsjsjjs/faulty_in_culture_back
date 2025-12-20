@@ -115,7 +115,50 @@ go build -o ranking-api.exe cmd/server/main.go
 - GET `/api/messages` 获取历史消息列表（支持分页和状态筛选）
 - GET `/ws` WebSocket 实时消息推送
 
+### 存档相关 🆕（需要认证）
+- GET `/api/savegames` 获取用户所有存档
+- GET `/api/savegames/{slot}` 获取指定槽位存档（1-6）
+- PUT `/api/savegames/{slot}` 创建或更新存档
+- DELETE `/api/savegames/{slot}` 删除存档
+
+### AI聊天相关 🆕（需要认证）
+- POST `/api/chat/start` 开始新的AI聊天会话
+- POST `/api/chat/send` 发送消息给AI（异步，通过WebSocket返回）
+- GET `/api/chat/sessions` 获取所有聊天会话
+- GET `/api/chat/{session_id}` 获取聊天历史
+
 详细参数和返回格式请参考 [Swagger 文档](http://localhost:8080/swagger/index.html)。
+
+## 认证说明
+
+需要认证的接口需要在请求头中添加 `Authorization` token：
+```
+Authorization: {userID}:{username}:{timestamp}
+```
+
+示例：
+```bash
+# 登录获取token
+curl -X POST http://localhost:8080/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"123456"}'
+
+# 使用token访问需要认证的接口
+curl -X GET http://localhost:8080/api/savegames \
+  -H "Authorization: 1:test:1703059200"
+```
+
+## 环境变量
+
+在启动服务前，需要设置以下环境变量：
+
+```bash
+# 混元AI API Key（用于AI聊天功能）
+export HUNYUAN_API_KEY="your-api-key-here"
+
+# 可选：端口号（默认8080）
+export PORT=8080
+```
 
 ## 消息队列持久化说明
 

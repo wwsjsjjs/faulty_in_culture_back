@@ -54,7 +54,14 @@ func Register(c *gin.Context) {
 	}
 	db.Create(&user)
 
-	c.JSON(http.StatusOK, vo.UserVO{ID: user.ID, Username: user.Username})
+	// 生成token
+	token := fmt.Sprintf("%d:%s:%d", user.ID, user.Username, time.Now().Unix())
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+		"token":    token,
+	})
 }
 
 // Login 用户登录
@@ -76,7 +83,7 @@ func Login(c *gin.Context) {
 
 	var user models.User
 	cacheKey := fmt.Sprintf("user:username:%s", req.Username)
-	
+
 	// 尝试从缓存获取用户信息
 	cacheClient := cache.GetCache()
 	if cacheClient != nil {
@@ -87,7 +94,7 @@ func Login(c *gin.Context) {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
 				return
 			}
-			
+
 			// 生成 token
 			token := generateToken(user.ID, user.Username)
 			c.JSON(http.StatusOK, gin.H{"token": token, "user": vo.UserVO{ID: user.ID, Username: user.Username}})
