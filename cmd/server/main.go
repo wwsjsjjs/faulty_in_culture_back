@@ -1,13 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yourusername/ranking-api/internal/cache"
 	"github.com/yourusername/ranking-api/internal/config"
 	"github.com/yourusername/ranking-api/internal/database"
+	"github.com/yourusername/ranking-api/internal/handlers"
+	"github.com/yourusername/ranking-api/internal/queue"
 	"github.com/yourusername/ranking-api/internal/routes"
+	"github.com/yourusername/ranking-api/internal/scheduler"
+	ws "github.com/yourusername/ranking-api/internal/websocket"
 
 	_ "github.com/yourusername/ranking-api/docs" // 导入swagger文档
 )
@@ -43,6 +49,32 @@ func main() {
 	if err := database.InitDatabase(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
+
+	// 初始化 Redis 缓存
+	if err := cache.InitCache(); err != nil {
+		log.Printf("Warning: Failed to initialize cache: %v", err)
+		log.Println("Server will continue without caching")
+	} else {
+		log.Println("Redis cache initialized successfully")
+	}
+
+	// 初始化 WebSocket 管理器
+	wsManager := ws.NewManager()
+	handlers.InitMessageHandler(wsManager)
+
+	// 初始化消息队列（使用 Redis Streams）
+	redisConf := config.AppConfig.Redis
+	redisAddr := fmt.Sprintf("%s:%d", redisConf.Host, redisConf.Port)
+	if err := queue.InitQueue(redisAddr, redisConf.Password, redisConf.DB); err != nil {
+		log.Fatalf("Failed to initialize message queue: %v", err)
+	}
+	defer queue.Shutdown()
+
+	// 启动 Redis Streams worker
+	queue.StartWorker(handlers.ProcessDelayedMessage)
+
+	// 启动定时清理任务
+	scheduler.StartMessageCleanupScheduler()
 
 	// 设置Gin模式（开发环境使用debug，生产环境使用release）
 	mode := os.Getenv("GIN_MODE")

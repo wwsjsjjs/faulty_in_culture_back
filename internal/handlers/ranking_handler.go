@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yourusername/ranking-api/internal/cache"
 	"github.com/yourusername/ranking-api/internal/database"
 	"github.com/yourusername/ranking-api/internal/dto"
 	"github.com/yourusername/ranking-api/internal/models"
@@ -63,6 +66,13 @@ func (h *RankingHandler) CreateRanking(c *gin.Context) {
 		return
 	}
 
+	// 清除相关缓存
+	cacheClient := cache.GetCache()
+	if cacheClient != nil {
+		_ = cacheClient.Delete("rankings:all")
+		_ = cacheClient.Delete("rankings:top")
+	}
+
 	c.JSON(http.StatusCreated, ranking)
 }
 
@@ -91,6 +101,21 @@ func (h *RankingHandler) GetRankings(c *gin.Context) {
 	}
 
 	offset := (page - 1) * limit
+	
+	// 构建缓存键
+	cacheKey := fmt.Sprintf("rankings:page:%d:limit:%d", page, limit)
+	var response []vo.RankingResponse
+	
+	// 尝试从缓存获取
+	cacheClient := cache.GetCache()
+	if cacheClient != nil {
+		err := cacheClient.Get(cacheKey, &response)
+		if err == nil && len(response) > 0 {
+			// 缓存命中
+			c.JSON(http.StatusOK, response)
+			return
+		}
+	}
 
 	var rankings []models.Ranking
 
@@ -104,7 +129,7 @@ func (h *RankingHandler) GetRankings(c *gin.Context) {
 	}
 
 	// 计算排名并转换为响应格式
-	response := make([]vo.RankingResponse, len(rankings))
+	response = make([]vo.RankingResponse, len(rankings))
 	for i, r := range rankings {
 		response[i] = vo.RankingResponse{
 			ID:        r.ID,
@@ -114,6 +139,11 @@ func (h *RankingHandler) GetRankings(c *gin.Context) {
 			CreatedAt: r.CreatedAt,
 			UpdatedAt: r.UpdatedAt,
 		}
+	}
+
+	// 缓存结果（5分钟过期）
+	if cacheClient != nil {
+		_ = cacheClient.Set(cacheKey, response, 5*time.Minute)
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -191,6 +221,19 @@ func (h *RankingHandler) UpdateRanking(c *gin.Context) {
 		return
 	}
 
+	// 清除相关缓存
+	cacheClient := cache.GetCache()
+	if cacheClient != nil {
+		_ = cacheClient.Delete("rankings:all")
+		_ = cacheClient.Delete("rankings:top")
+		// 清除所有分页缓存（简单处理，生产环境可用更精细的方式）
+		for i := 1; i <= 10; i++ {
+			for j := 10; j <= 100; j += 10 {
+				_ = cacheClient.Delete(fmt.Sprintf("rankings:page:%d:limit:%d", i, j))
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, ranking)
 }
 
@@ -220,6 +263,19 @@ func (h *RankingHandler) DeleteRanking(c *gin.Context) {
 		return
 	}
 
+	// 清除相关缓存
+	cacheClient := cache.GetCache()
+	if cacheClient != nil {
+		_ = cacheClient.Delete("rankings:all")
+		_ = cacheClient.Delete("rankings:top")
+		// 清除所有分页缓存
+		for i := 1; i <= 10; i++ {
+			for j := 10; j <= 100; j += 10 {
+				_ = cacheClient.Delete(fmt.Sprintf("rankings:page:%d:limit:%d", i, j))
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, vo.MessageResponse{Message: "ranking deleted successfully"})
 }
 
@@ -241,6 +297,21 @@ func (h *RankingHandler) GetTopRankings(c *gin.Context) {
 		top = 10
 	}
 
+	// 构建缓存键
+	cacheKey := fmt.Sprintf("rankings:top:%d", top)
+	var response []vo.RankingResponse
+	
+	// 尝试从缓存获取
+	cacheClient := cache.GetCache()
+	if cacheClient != nil {
+		err := cacheClient.Get(cacheKey, &response)
+		if err == nil && len(response) > 0 {
+			// 缓存命中
+			c.JSON(http.StatusOK, response)
+			return
+		}
+	}
+
 	var rankings []models.Ranking
 
 	if err := database.DB.Order("score DESC, created_at ASC").
@@ -250,7 +321,7 @@ func (h *RankingHandler) GetTopRankings(c *gin.Context) {
 		return
 	}
 
-	response := make([]vo.RankingResponse, len(rankings))
+	response = make([]vo.RankingResponse, len(rankings))
 	for i, r := range rankings {
 		response[i] = vo.RankingResponse{
 			ID:        r.ID,
@@ -260,6 +331,11 @@ func (h *RankingHandler) GetTopRankings(c *gin.Context) {
 			CreatedAt: r.CreatedAt,
 			UpdatedAt: r.UpdatedAt,
 		}
+	}
+
+	// 缓存结果（5分钟过期）
+	if cacheClient != nil {
+		_ = cacheClient.Set(cacheKey, response, 5*time.Minute)
 	}
 
 	c.JSON(http.StatusOK, response)

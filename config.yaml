@@ -5,3 +5,15 @@ database:
   password: 1234
   name: culture
   charset: utf8mb4
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: ""
+  db: 0
+
+message:
+  delay_seconds: 10          # 消息延迟处理时间（秒）
+  cleanup_days: 30           # 清理30天前的已完成消息
+  failed_cleanup_days: 7     # 清理7天前的失败消息
+  cleanup_schedule_hour: 2   # 每天凌晨2点执行清理

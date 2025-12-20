@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket + 延迟消息测试</title>
+</head>
+<body>
+    <h1>WebSocket + 延迟消息测试</h1>
+    
+    <div>
+        <h3>1. 发送消息（HTTP）</h3>
+        <input type="text" id="userId" placeholder="用户ID" value="user123">
+        <input type="text" id="message" placeholder="消息内容" value="Hello World">
+        <button onclick="sendMessage()">发送消息</button>
+        <p>任务ID: <span id="taskId"></span></p>
+    </div>
+
+    <div>
+        <h3>2. 建立 WebSocket 连接</h3>
+        <button onclick="connectWS()">连接 WebSocket</button>
+        <button onclick="disconnectWS()">断开连接</button>
+        <p>状态: <span id="wsStatus">未连接</span></p>
+    </div>
+
+    <div>
+        <h3>3. 查询结果（HTTP）</h3>
+        <input type="text" id="queryTaskId" placeholder="任务ID">
+        <button onclick="queryResult()">查询结果</button>
+    </div>
+
+    <div>
+        <h3>接收到的消息：</h3>
+        <div id="messages" style="border:1px solid #ccc; padding:10px; min-height:200px;"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        const API_BASE = 'http://localhost:8080/api';
+        const WS_BASE = 'ws://localhost:8080/ws';
+
+        function addMessage(msg) {
+            const div = document.getElementById('messages');
+            const time = new Date().toLocaleTimeString();
+            div.innerHTML += `<p>[${time}] ${msg}</p>`;
+        }
+
+        async function sendMessage() {
+            const userId = document.getElementById('userId').value;
+            const message = document.getElementById('message').value;
+
+            const response = await fetch(`${API_BASE}/send-message`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_id: userId, message: message})
+            });
+
+            const data = await response.json();
+            document.getElementById('taskId').textContent = data.task_id;
+            addMessage(`消息已发送: ${JSON.stringify(data)}`);
+        }
+
+        function connectWS() {
+            const userId = document.getElementById('userId').value;
+            ws = new WebSocket(`${WS_BASE}?user_id=${userId}`);
+
+            ws.onopen = () => {
+                document.getElementById('wsStatus').textContent = '已连接';
+                addMessage('WebSocket 已连接');
+            };
+
+            ws.onmessage = (e) => {
+                addMessage(`收到推送: ${e.data}`);
+            };
+
+            ws.onclose = () => {
+                document.getElementById('wsStatus').textContent = '未连接';
+                addMessage('WebSocket 已断开');
+            };
+
+            ws.onerror = (e) => {
+                addMessage('WebSocket 错误: ' + e.message);
+            };
+        }
+
+        function disconnectWS() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        async function queryResult() {
+            const taskId = document.getElementById('queryTaskId').value;
+            const response = await fetch(`${API_BASE}/query-result?task_id=${taskId}`);
+            const data = await response.json();
+            addMessage(`查询结果: ${JSON.stringify(data)}`);
+        }
+    </script>
+</body>
+</html>

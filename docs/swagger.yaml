@@ -1,15 +1,14 @@
 basePath: /
 definitions:
-  models.CreateRankingRequest:
-    description: 创建新的用户排名
+  dto.CreateRankingRequest:
     properties:
       score:
-        description: 分数，必填，非负
+        description: Score 分数
         example: 1000
         minimum: 0
         type: integer
       username:
-        description: 用户名，必填，1-100字符
+        description: Username 用户名
         example: player1
         maxLength: 100
         minLength: 1
@@ -18,21 +17,53 @@ definitions:
     - score
     - username
     type: object
-  models.ErrorResponse:
-    description: 通用错误响应结构
-    properties:
-      error:
-        description: 错误信息
-        example: invalid request
-        type: string
-    type: object
-  models.MessageResponse:
-    description: 通用消息响应结构
+  dto.SendMessageRequest:
     properties:
       message:
-        description: 消息
-        example: success
         type: string
+      user_id:
+        type: string
+    required:
+    - message
+    - user_id
+    type: object
+  dto.UpdateRankingRequest:
+    properties:
+      score:
+        description: Score 分数（可选）
+        example: 1500
+        minimum: 0
+        type: integer
+      username:
+        description: Username 用户名
+        example: player1
+        maxLength: 100
+        minLength: 1
+        type: string
+    type: object
+  dto.UserLoginRequest:
+    properties:
+      password:
+        description: Password 密码
+        type: string
+      username:
+        description: Username 用户名
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  dto.UserRegisterRequest:
+    properties:
+      password:
+        description: Password 密码
+        type: string
+      username:
+        description: Username 用户名
+        type: string
+    required:
+    - password
+    - username
     type: object
   models.Ranking:
     description: 用户排名信息
@@ -60,49 +91,69 @@ definitions:
         example: player1
         type: string
     type: object
-  models.RankingResponse:
-    description: 用户排名响应结构，包含排名信息
+  vo.ErrorResponse:
+    properties:
+      error:
+        description: Error 错误信息
+        example: invalid request
+        type: string
+    type: object
+  vo.MessageListResponse:
+    properties:
+      limit:
+        type: integer
+      messages:
+        items:
+          $ref: '#/definitions/vo.MessageResponse'
+        type: array
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  vo.MessageResponse:
+    properties:
+      message:
+        description: Message 消息内容
+        example: success
+        type: string
+    type: object
+  vo.RankingResponse:
     properties:
       created_at:
-        description: 创建时间
+        description: CreatedAt 创建时间
         example: "2023-12-20T10:00:00Z"
         format: date-time
         type: string
       id:
-        description: 主键ID
+        description: ID 排名ID
         example: 1
         type: integer
       rank:
-        description: 排名
+        description: Rank 排名
         example: 1
         type: integer
       score:
-        description: 分数
+        description: Score 分数
         example: 1000
         type: integer
       updated_at:
-        description: 更新时间
+        description: UpdatedAt 更新时间
         example: "2023-12-20T10:00:00Z"
         format: date-time
         type: string
       username:
-        description: 用户名
+        description: Username 用户名
         example: player1
         type: string
     type: object
-  models.UpdateRankingRequest:
-    description: 更新用户排名
+  vo.UserVO:
     properties:
-      score:
-        description: 分数（可选），非负
-        example: 1500
-        minimum: 0
+      id:
+        description: ID 用户ID
         type: integer
       username:
-        description: 用户名（可选），1-100字符
-        example: player1
-        maxLength: 100
-        minLength: 1
+        description: Username 用户名
         type: string
     type: object
 host: localhost:8080
@@ -119,6 +170,98 @@ info:
   title: 排名系统API
   version: "1.0"
 paths:
+  /api/login:
+    post:
+      consumes:
+      - application/json
+      description: 用户登录，传入用户名和密码
+      parameters:
+      - description: 登录信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 用户登录
+      tags:
+      - user
+  /api/messages:
+    get:
+      description: 获取指定用户的历史消息记录，支持分页和状态筛选
+      parameters:
+      - description: 用户ID
+        in: query
+        name: user_id
+        required: true
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      - description: 状态筛选
+        enum:
+        - pending
+        - completed
+        - failed
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/vo.MessageListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 获取历史消息列表
+      tags:
+      - message
+  /api/query-result:
+    get:
+      description: 根据任务ID查询延迟消息结果
+      parameters:
+      - description: 任务ID
+        in: query
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 查询消息结果
+      tags:
+      - message
   /api/rankings:
     get:
       description: 获取所有排名记录，按分数降序排列
@@ -140,12 +283,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.RankingResponse'
+              $ref: '#/definitions/vo.RankingResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: '#/definitions/vo.ErrorResponse'
       summary: 获取排名列表
       tags:
       - rankings
@@ -159,7 +302,7 @@ paths:
         name: ranking
         required: true
         schema:
-          $ref: '#/definitions/models.CreateRankingRequest'
+          $ref: '#/definitions/dto.CreateRankingRequest'
       produces:
       - application/json
       responses:
@@ -170,11 +313,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: '#/definitions/vo.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: '#/definitions/vo.ErrorResponse'
       summary: 创建新的排名记录
       tags:
       - rankings
@@ -193,11 +336,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.MessageResponse'
+            $ref: '#/definitions/vo.MessageResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: '#/definitions/vo.ErrorResponse'
       summary: 删除排名记录
       tags:
       - rankings
@@ -219,7 +362,7 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: '#/definitions/vo.ErrorResponse'
       summary: 获取单个排名
       tags:
       - rankings
@@ -238,7 +381,7 @@ paths:
         name: ranking
         required: true
         schema:
-          $ref: '#/definitions/models.UpdateRankingRequest'
+          $ref: '#/definitions/dto.UpdateRankingRequest'
       produces:
       - application/json
       responses:
@@ -249,11 +392,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: '#/definitions/vo.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: '#/definitions/vo.ErrorResponse'
       summary: 更新排名记录
       tags:
       - rankings
@@ -273,15 +416,67 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.RankingResponse'
+              $ref: '#/definitions/vo.RankingResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            $ref: '#/definitions/vo.ErrorResponse'
       summary: 获取排行榜前N名
       tags:
       - rankings
+  /api/register:
+    post:
+      consumes:
+      - application/json
+      description: 用户注册，传入用户名和密码
+      parameters:
+      - description: 注册信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserRegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/vo.UserVO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 用户注册
+      tags:
+      - user
+  /api/send-message:
+    post:
+      consumes:
+      - application/json
+      description: 发送一段消息，配置时间后返回
+      parameters:
+      - description: 消息内容
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 发送延迟消息
+      tags:
+      - message
 schemes:
 - http
 swagger: "2.0"

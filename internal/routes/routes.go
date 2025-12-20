@@ -17,20 +17,35 @@ func SetupRoutes(router *gin.Engine) {
 	rankingHandler := handlers.NewRankingHandler()
 
 	// API路由组
-	// 注册 API 路由组
 	api := router.Group("/api")
 	{
+		// 用户相关路由
+		api.POST("/register", handlers.Register)
+		api.POST("/login", handlers.Login)
+
+		// 消息相关路由
+		api.POST("/send-message", handlers.SendMessage) // 发送延迟消息
+		api.GET("/query-result", handlers.QueryResult)  // 查询消息结果
+		api.GET("/messages", handlers.GetMessages)      // 获取历史消息列表
+
 		// 排名相关路由
 		rankings := api.Group("/rankings")
 		{
-			rankings.POST("", rankingHandler.CreateRanking)       // 创建排名
-			rankings.GET("", rankingHandler.GetRankings)          // 获取所有排名（分页）
-			rankings.GET("/top", rankingHandler.GetTopRankings)   // 获取前N名
-			rankings.GET("/:id", rankingHandler.GetRanking)       // 获取单个排名
-			rankings.PUT("/:id", rankingHandler.UpdateRanking)    // 更新排名
-			rankings.DELETE("/:id", rankingHandler.DeleteRanking) // 删除排名
+			rankings.GET("", rankingHandler.GetRankings)        // 获取所有排名（分页）
+			rankings.GET("/top", rankingHandler.GetTopRankings) // 获取前N名
+			rankings.GET("/:id", rankingHandler.GetRanking)     // 获取单个排名
+
+			// 需要认证的接口
+			rankingsAuth := rankings.Group("")
+			rankingsAuth.Use(handlers.AuthMiddleware())
+			rankingsAuth.POST("", rankingHandler.CreateRanking)       // 创建排名
+			rankingsAuth.PUT("/:id", rankingHandler.UpdateRanking)    // 更新排名
+			rankingsAuth.DELETE("/:id", rankingHandler.DeleteRanking) // 删除排名
 		}
 	}
+
+	// WebSocket 路由
+	router.GET("/ws", handlers.HandleWebSocket)
 
 	// Swagger文档路由
 	// 注册 Swagger 文档路由（第三方中间件，API 文档展示）
@@ -38,6 +53,7 @@ func SetupRoutes(router *gin.Engine) {
 
 	// 健康检查
 	// 注册健康检查路由（Gin handler，基础运维功能）
+	// HealthCheck 健康检查接口，返回服务状态
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "ok",

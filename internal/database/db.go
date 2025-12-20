@@ -36,7 +36,7 @@ func InitDatabase() error {
 	log.Println("Database connection established (MySQL)")
 
 	// 自动迁移数据库表结构
-	err = DB.AutoMigrate(&models.Ranking{})
+	err = DB.AutoMigrate(&models.Ranking{}, &models.User{}, &models.Message{})
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %v", err)
 	}
@@ -52,6 +52,7 @@ func InitDatabase() error {
 // seedData 插入初始测试数据
 // 类型：私有辅助函数
 // 功能：如表为空则插入默认测试数据，便于开发和演示
+// seedData 插入初始测试数据（如表为空则插入默认测试数据，便于开发和演示）
 func seedData() {
 	var count int64
 	DB.Model(&models.Ranking{}).Count(&count)
@@ -77,6 +78,7 @@ func seedData() {
 // GetDB 获取数据库实例
 // 类型：Getter
 // 功能：返回全局数据库连接对象，供业务逻辑调用
+// GetDB 获取数据库实例（返回全局数据库连接对象，供业务逻辑调用）
 func GetDB() *gorm.DB {
 	return DB
 }

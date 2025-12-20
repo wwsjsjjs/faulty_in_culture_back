@@ -5,8 +5,10 @@ package dto
 // 只包含前端提交的参数
 
 type CreateRankingRequest struct {
+	// Username 用户名
 	Username string `json:"username" binding:"required,min=1,max=100" example:"player1"`
-	Score    int    `json:"score" binding:"required,min=0" example:"1000"`
+	// Score 分数
+	Score int `json:"score" binding:"required,min=0" example:"1000"`
 }
 
 // UpdateRankingRequest 更新排名请求DTO
@@ -14,6 +16,8 @@ type CreateRankingRequest struct {
 // 只包含前端可提交的参数
 
 type UpdateRankingRequest struct {
+	// Username 用户名
 	Username string `json:"username" binding:"omitempty,min=1,max=100" example:"player1"`
-	Score    *int   `json:"score" binding:"omitempty,min=0" example:"1500"`
+	// Score 分数（可选）
+	Score *int `json:"score" binding:"omitempty,min=0" example:"1500"`
 }

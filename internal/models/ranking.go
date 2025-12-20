@@ -25,6 +25,7 @@ type Ranking struct {
 // TableName 指定表名
 // 类型：GORM 接口实现
 // 功能：指定该模型对应的数据库表名为 rankings
+// TableName 指定 Ranking 结构体对应的数据库表名
 func (Ranking) TableName() string {
 	return "rankings"
 }

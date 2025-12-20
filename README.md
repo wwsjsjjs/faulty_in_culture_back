@@ -2,13 +2,23 @@
 
 一个基于Go语言的用户排名管理系统后端API，使用Gin框架和GORM。
 
+
+
+
+
 ## 技术栈
 
-- **Web框架**: Gin (高性能HTTP Web框架)
-- **ORM**: GORM (Go语言ORM库)
-- **数据库**: SQLite (轻量级数据库，可轻松切换到MySQL/PostgreSQL)
-- **API文档**: Swagger/OpenAPI 3.0
 - **语言**: Go 1.21+
+- **Web 框架**: Gin（高性能 HTTP Web 框架）
+- **ORM**: GORM（Go 语言 ORM 库，支持 MySQL/SQLite/PostgreSQL 等）
+- **数据库**: MySQL（默认，支持切换 SQLite/PostgreSQL）
+- **密码加密**: bcrypt（用户密码安全存储）
+- **API 文档**: swaggo/swag 自动生成 Swagger/OpenAPI 3.0 文档
+- **接口测试**: Swagger UI（内置，支持在线调试）
+- **缓存中间件**: Redis（可选，支持会话、排行榜、验证码等高性能缓存场景）
+- **容器化**: Docker（应用容器化，便于部署和环境隔离）
+- **日志与监控**: ELK、Prometheus、Grafana（可选，日志采集、监控、可视化）
+- **分层结构**: handler、model、dto、vo、route、database 等分层清晰
 
 ## 项目结构
 
@@ -59,12 +69,7 @@ go install github.com/swaggo/swag/cmd/swag@latest
 
 **重要**: 确保 `$GOPATH/bin` 在系统PATH中。
 
-Windows PowerShell中添加到PATH:
-```powershell
-$env:Path += ";$env:USERPROFILE\go\bin"
-# 或永久添加（需要管理员权限）
-[System.Environment]::SetEnvironmentVariable("Path", $env:Path + ";$env:USERPROFILE\go\bin", [System.EnvironmentVariableTarget]::User)
-```
+
 
 ## 生成API文档
 
@@ -90,221 +95,84 @@ go build -o ranking-api.exe cmd/server/main.go
 ./ranking-api.exe
 ```
 
-### 方式3: 使用go run（推荐开发时使用）
+## 主要接口方法
 
-```bash
-cd cmd/server
-go run main.go
+### 用户相关
+- POST `/api/register` 用户注册
+- POST `/api/login` 用户登录
+
+### 排名相关
+- POST `/api/rankings` 创建新排名
+- GET `/api/rankings` 获取排名列表（分页）
+- GET `/api/rankings/{id}` 获取单个排名
+- PUT `/api/rankings/{id}` 更新排名
+- DELETE `/api/rankings/{id}` 删除排名
+- GET `/api/rankings/top` 获取排行榜前N名
+
+### 消息/异步任务相关
+- POST `/api/send-message` 发送延迟消息（10秒后返回）
+- GET `/api/query-result` 查询消息结果
+- GET `/api/messages` 获取历史消息列表（支持分页和状态筛选）
+- GET `/ws` WebSocket 实时消息推送
+
+详细参数和返回格式请参考 [Swagger 文档](http://localhost:8080/swagger/index.html)。
+
+## 消息队列持久化说明
+
+### 持久化方案
+本项目使用 **Redis Streams** 作为消息队列，实现了以下持久化机制：
+
+1. **Redis Streams 持久化**：
+   - 使用 Redis Streams 作为消息队列，支持消费者组、消息确认等特性
+   - Redis 支持 RDB（快照）和 AOF（追加日志）两种持久化方式
+   - 推荐配置：开启 AOF 持久化（`appendonly yes`），确保任务不丢失
+   - Streams 特性：消息持久化、消费者组、消息确认、自动重试
+
+2. **数据库双重持久化**：
+   - **接收时**：消息发送时立即保存到 MySQL（`messages` 表），状态为 `pending`，只保存请求消息
+   - **处理时**：队列倒计时结束后，更新消息状态为 `completed`，写入处理后的返回文本
+   - 记录字段：消息ID、用户ID、内容（先保存请求，后更新为返回）、状态、处理时间等
+   - 即使 Redis 故障，消息记录仍然完整保存
+
+3. **定时清理机制（可配置）**：
+   - 清理时间可在 `config.yaml` 中配置
+   - 默认每天凌晨 2 点自动清理 30 天前的已完成消息
+   - 7 天前的失败消息可手动清理
+   - 防止数据库无限增长，保持系统性能
+
+### 配置说明
+在 `config.yaml` 中配置消息队列参数：
+```yaml
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: ""
+  db: 0
+
+message:
+  delay_seconds: 10          # 消息延迟处理时间（秒）
+  cleanup_days: 30           # 清理30天前的已完成消息
+  failed_cleanup_days: 7     # 清理7天前的失败消息
+  cleanup_schedule_hour: 2   # 每天凌晨2点执行清理
 ```
 
-服务器将在 `http://localhost:8080` 启动
+### Redis 持久化配置建议
+在 Redis 配置文件（`redis.conf`）中添加：
+```conf
+# 开启 AOF 持久化
+appendonly yes
+appendfsync everysec
 
-## API端点
-
-### 基础
-
-- **健康检查**: `GET /health`
-- **Swagger文档**: `GET /swagger/index.html`
-
-### 排名管理
-
-| 方法 | 端点 | 描述 |
-|------|------|------|
-| POST | /api/rankings | 创建新排名 |
-| GET | /api/rankings | 获取所有排名（分页） |
-| GET | /api/rankings/top | 获取前N名 |
-| GET | /api/rankings/:id | 获取单个排名 |
-| PUT | /api/rankings/:id | 更新排名 |
-| DELETE | /api/rankings/:id | 删除排名 |
-
-## API使用示例
-
-### 1. 创建排名
-
-```bash
-curl -X POST http://localhost:8080/api/rankings \
-  -H "Content-Type: application/json" \
-  -d '{"username":"player1","score":1000}'
+# 或使用 RDB 快照（根据需求选择）
+save 900 1
+save 300 10
+save 60 10000
 ```
 
-### 2. 获取所有排名（分页）
+### 消息处理流程
+1. 用户发送消息 → 保存到数据库（pending，保存请求消息）
+2. 消息入队 Redis Streams（带延迟时间）
+3. Worker 消费消息，等待延迟时间
+4. 处理完成 → 更新数据库（completed，写入返回文本）
+5. 通过 WebSocket 推送给在线用户，或存储为离线消息
 
-```bash
-curl http://localhost:8080/api/rankings?page=1&limit=10
-```
-
-### 3. 获取前10名
-
-```bash
-curl http://localhost:8080/api/rankings/top?top=10
-```
-
-### 4. 获取单个排名
-
-```bash
-curl http://localhost:8080/api/rankings/1
-```
-
-### 5. 更新排名
-
-```bash
-curl -X PUT http://localhost:8080/api/rankings/1 \
-  -H "Content-Type: application/json" \
-  -d '{"score":1500}'
-```
-
-### 6. 删除排名
-
-```bash
-curl -X DELETE http://localhost:8080/api/rankings/1
-```
-
-## PowerShell示例（Windows）
-
-```powershell
-# 创建排名
-Invoke-RestMethod -Uri "http://localhost:8080/api/rankings" `
-  -Method Post `
-  -ContentType "application/json" `
-  -Body '{"username":"player1","score":1000}'
-
-# 获取所有排名
-Invoke-RestMethod -Uri "http://localhost:8080/api/rankings?page=1&limit=10"
-
-# 获取前10名
-Invoke-RestMethod -Uri "http://localhost:8080/api/rankings/top?top=10"
-```
-
-## 数据库
-
-项目使用SQLite数据库，数据库文件 `ranking.db` 会自动创建在项目根目录。
-
-### 切换到其他数据库
-
-如需使用MySQL或PostgreSQL，修改 `internal/database/db.go`:
-
-#### MySQL示例:
-
-```go
-import "gorm.io/driver/mysql"
-
-// 安装驱动
-// go get -u gorm.io/driver/mysql
-
-dsn := "user:password@tcp(127.0.0.1:3306)/ranking_db?charset=utf8mb4&parseTime=True&loc=Local"
-DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
-```
-
-#### PostgreSQL示例:
-
-```go
-import "gorm.io/driver/postgres"
-
-// 安装驱动
-// go get -u gorm.io/driver/postgres
-
-dsn := "host=localhost user=gorm password=gorm dbname=ranking_db port=5432 sslmode=disable"
-DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-```
-
-## 环境变量
-
-- `PORT`: 服务器端口（默认: 8080）
-- `GIN_MODE`: Gin运行模式 (`debug` 或 `release`，默认: debug）
-
-```bash
-# Windows PowerShell
-$env:PORT="3000"
-$env:GIN_MODE="release"
-go run cmd/server/main.go
-```
-
-## 测试工具推荐
-
-### 1. Swagger UI（内置）
-
-访问 `http://localhost:8080/swagger/index.html` 可以直接在浏览器中测试API。
-
-### 2. Postman
-
-下载地址: [https://www.postman.com/downloads/](https://www.postman.com/downloads/)
-
-导入Swagger文档:
-1. 打开Postman
-2. File → Import
-3. 输入URL: `http://localhost:8080/swagger/doc.json`
-
-### 3. Thunder Client (VS Code扩展)
-
-在VS Code中安装Thunder Client扩展，直接在编辑器中测试API。
-
-### 4. curl / Invoke-RestMethod
-
-使用命令行工具测试（见上方示例）
-
-## 常见问题
-
-### Q: swag命令找不到？
-
-A: 确保已安装swag并添加到PATH:
-
-```powershell
-# 安装
-go install github.com/swaggo/swag/cmd/swag@latest
-
-# 检查安装路径
-where.exe swag
-
-# 如果找不到，添加到PATH
-$env:Path += ";$env:USERPROFILE\go\bin"
-```
-
-### Q: 端口被占用？
-
-A: 更改端口:
-
-```bash
-$env:PORT="3000"
-go run cmd/server/main.go
-```
-
-### Q: 数据库连接失败？
-
-A: SQLite不需要额外配置。如果使用MySQL/PostgreSQL，检查:
-- 数据库服务是否运行
-- 连接字符串是否正确
-- 用户权限是否足够
-
-## 开发流程
-
-1. 修改代码
-2. 如果修改了API注释，重新生成Swagger文档: `swag init -g cmd/server/main.go -o docs`
-3. 重启服务器
-4. 在Swagger UI中测试: `http://localhost:8080/swagger/index.html`
-
-## 部署
-
-### 编译生产版本
-
-```bash
-# Windows
-go build -o ranking-api.exe -ldflags="-s -w" cmd/server/main.go
-
-# Linux
-GOOS=linux GOARCH=amd64 go build -o ranking-api -ldflags="-s -w" cmd/server/main.go
-
-# macOS
-GOOS=darwin GOARCH=amd64 go build -o ranking-api -ldflags="-s -w" cmd/server/main.go
-```
-
-### 运行生产版本
-
-```bash
-# 设置为release模式
-$env:GIN_MODE="release"
-./ranking-api.exe
-```
-
-## 许可
-
-MIT License

@@ -16,8 +16,24 @@ type DBConfig struct {
 	Charset  string `yaml:"charset"`
 }
 
+type RedisConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
+type MessageConfig struct {
+	DelaySeconds         int `yaml:"delay_seconds"`          // 消息延迟处理时间（秒）
+	CleanupDays          int `yaml:"cleanup_days"`           // 清理多少天前的已完成消息
+	FailedCleanupDays    int `yaml:"failed_cleanup_days"`   // 清理多少天前的失败消息
+	CleanupScheduleHour  int `yaml:"cleanup_schedule_hour"` // 每天几点执行清理
+}
+
 type Config struct {
-	Database DBConfig `yaml:"database"`
+	Database DBConfig      `yaml:"database"`
+	Redis    RedisConfig   `yaml:"redis"`
+	Message  MessageConfig `yaml:"message"`
 }
 
 var AppConfig Config

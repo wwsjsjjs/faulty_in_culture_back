@@ -4,5 +4,6 @@
         "**/*.rpa": true,
         "**/*.rpymc": true,
         "**/cache/": true
-    }
+    },
+    "chat.agent.maxRequests": 40
 }
