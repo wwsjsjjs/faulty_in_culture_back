@@ -10,15 +10,7 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "termsOfService": "http://swagger.io/terms/",
-        "contact": {
-            "name": "API支持",
-            "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
-        },
-        "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-        },
+        "contact": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -341,14 +333,14 @@ const docTemplate = `{
         },
         "/api/rankings": {
             "get": {
-                "description": "获取所有排名记录，按分数降序排列",
+                "description": "获取用户排行榜，按分数降序排列",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "rankings"
+                    "user"
                 ],
-                "summary": "获取排名列表",
+                "summary": "获取排行榜",
                 "parameters": [
                     {
                         "type": "integer",
@@ -377,207 +369,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "创建一个新的用户排名记录",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "rankings"
-                ],
-                "summary": "创建新的排名记录",
-                "parameters": [
-                    {
-                        "description": "排名信息",
-                        "name": "ranking",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateRankingRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.Ranking"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/rankings/top": {
-            "get": {
-                "description": "获取分数最高的前N名用户",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "rankings"
-                ],
-                "summary": "获取排行榜前N名",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 10,
-                        "description": "前N名",
-                        "name": "top",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/vo.RankingResponse"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/rankings/{id}": {
-            "get": {
-                "description": "根据ID获取单个排名记录",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "rankings"
-                ],
-                "summary": "获取单个排名",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "排名ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Ranking"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "根据ID更新排名记录",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "rankings"
-                ],
-                "summary": "更新排名记录",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "排名ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "更新信息",
-                        "name": "ranking",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.UpdateRankingRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Ranking"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "根据ID删除排名记录（软删除）",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "rankings"
-                ],
-                "summary": "删除排名记录",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "排名ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/vo.SuccessMessageResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/vo.ErrorResponse"
                         }
@@ -844,6 +635,83 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/user/score": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "更新当前用户的分数",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "更新用户分数",
+                "parameters": [
+                    {
+                        "description": "分数信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateScoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/vo.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/vo.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/vo.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/ws": {
+            "get": {
+                "description": "建立 WebSocket 连接，接收实时消息推送",
+                "tags": [
+                    "message"
+                ],
+                "summary": "WebSocket 连接",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户ID",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
         }
     },
     "definitions": {
@@ -855,11 +723,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "content": {
-                    "description": "消息内容",
                     "type": "string"
                 },
                 "session_id": {
-                    "description": "聊天会话ID",
                     "type": "integer"
                 }
             }
@@ -868,41 +734,17 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "title": {
-                    "description": "聊天标题（可选）",
                     "type": "string"
-                }
-            }
-        },
-        "dto.CreateRankingRequest": {
-            "type": "object",
-            "required": [
-                "score",
-                "username"
-            ],
-            "properties": {
-                "score": {
-                    "description": "Score 分数",
-                    "type": "integer",
-                    "minimum": 0,
-                    "example": 1000
-                },
-                "username": {
-                    "description": "Username 用户名",
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 1,
-                    "example": "player1"
                 }
             }
         },
         "dto.SaveGameRequest": {
             "type": "object",
             "required": [
-                "data"
+                "game_data"
             ],
             "properties": {
-                "data": {
-                    "description": "存档数据（JSON字符串）",
+                "game_data": {
                     "type": "string"
                 }
             }
@@ -918,25 +760,19 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
-                    "type": "string"
+                    "type": "integer"
                 }
             }
         },
-        "dto.UpdateRankingRequest": {
+        "dto.UpdateScoreRequest": {
             "type": "object",
+            "required": [
+                "score"
+            ],
             "properties": {
                 "score": {
-                    "description": "Score 分数（可选）",
                     "type": "integer",
-                    "minimum": 0,
-                    "example": 1500
-                },
-                "username": {
-                    "description": "Username 用户名",
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 1,
-                    "example": "player1"
+                    "minimum": 0
                 }
             }
         },
@@ -948,11 +784,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "password": {
-                    "description": "Password 密码",
                     "type": "string"
                 },
                 "username": {
-                    "description": "Username 用户名",
                     "type": "string"
                 }
             }
@@ -965,45 +799,10 @@ const docTemplate = `{
             ],
             "properties": {
                 "password": {
-                    "description": "Password 密码",
                     "type": "string"
                 },
                 "username": {
-                    "description": "Username 用户名",
                     "type": "string"
-                }
-            }
-        },
-        "models.Ranking": {
-            "description": "用户排名信息",
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "description": "创建时间",
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "2023-12-20T10:00:00Z"
-                },
-                "id": {
-                    "description": "主键ID",
-                    "type": "integer",
-                    "example": 1
-                },
-                "score": {
-                    "description": "分数",
-                    "type": "integer",
-                    "example": 1000
-                },
-                "updated_at": {
-                    "description": "更新时间",
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "2023-12-20T10:00:00Z"
-                },
-                "username": {
-                    "description": "用户名（唯一）",
-                    "type": "string",
-                    "example": "player1"
                 }
             }
         },
@@ -1034,7 +833,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "role": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "session_id": {
                     "type": "integer"
@@ -1053,8 +852,8 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
-                "updated_at": {
-                    "type": "string"
+                "type": {
+                    "type": "integer"
                 },
                 "user_id": {
                     "type": "integer"
@@ -1103,20 +902,14 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "processed_at": {
-                    "type": "string"
-                },
                 "status": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "task_id": {
                     "type": "string"
                 },
-                "updated_at": {
-                    "type": "string"
-                },
                 "user_id": {
-                    "type": "string"
+                    "type": "integer"
                 }
             }
         },
@@ -1160,20 +953,14 @@ const docTemplate = `{
         "vo.SaveGameResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "game_data": {
                     "type": "string"
                 },
-                "data": {
+                "saved_at": {
                     "type": "string"
-                },
-                "id": {
-                    "type": "integer"
                 },
                 "slot_number": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 },
                 "user_id": {
                     "type": "integer"
@@ -1212,8 +999,8 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{"http"},
-	Title:            "排名系统API",
-	Description:      "这是一个用户排名管理系统的API文档",
+	Title:            "faulty_in_culture 管理系统",
+	Description:      "这是一个用户管理系统的API文档。",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

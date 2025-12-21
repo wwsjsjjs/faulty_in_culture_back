@@ -81,8 +81,8 @@ func (h *ChatHandler) StartChat(c *gin.Context) {
 		ID:        session.ID,
 		UserID:    session.UserID,
 		Title:     session.Title,
+		Type:      session.Type,
 		CreatedAt: session.CreatedAt,
-		UpdatedAt: session.UpdatedAt,
 	})
 }
 
@@ -118,10 +118,9 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	// 保存用户消息
 	userMsg := models.ChatMessage{
 		SessionID: req.SessionID,
-		Role:      "user",
+		Role:      1,
 		Content:   req.Content,
 	}
 	if err := database.DB.Create(&userMsg).Error; err != nil {
@@ -144,17 +143,15 @@ func (h *ChatHandler) callAIAndRespond(userID uint, sessionID uint, userContent 
 	var messages []models.ChatMessage
 	database.DB.Where("session_id = ?", sessionID).Order("created_at ASC").Find(&messages)
 
-	// 构建消息列表
 	aiMessages := make([]openai.ChatCompletionMessageParamUnion, 0, len(messages))
 	for _, msg := range messages {
-		if msg.Role == "user" {
+		if msg.Role == 1 {
 			aiMessages = append(aiMessages, openai.UserMessage(msg.Content))
 		} else {
 			aiMessages = append(aiMessages, openai.AssistantMessage(msg.Content))
 		}
 	}
 
-	// 调用混元AI
 	client := openai.NewClient(
 		option.WithAPIKey(os.Getenv("HUNYUAN_API_KEY")),
 		option.WithBaseURL("https://api.hunyuan.cloud.tencent.com/v1/"),
@@ -176,10 +173,9 @@ func (h *ChatHandler) callAIAndRespond(userID uint, sessionID uint, userContent 
 
 	aiResponse := chatCompletion.Choices[0].Message.Content
 
-	// 保存AI回复
 	assistantMsg := models.ChatMessage{
 		SessionID: sessionID,
-		Role:      "assistant",
+		Role:      2,
 		Content:   aiResponse,
 	}
 	if err := database.DB.Create(&assistantMsg).Error; err != nil {
@@ -268,8 +264,8 @@ func (h *ChatHandler) GetChatHistory(c *gin.Context) {
 			ID:        session.ID,
 			UserID:    session.UserID,
 			Title:     session.Title,
+			Type:      session.Type,
 			CreatedAt: session.CreatedAt,
-			UpdatedAt: session.UpdatedAt,
 		},
 		Messages: messageResponses,
 	})
@@ -313,8 +309,8 @@ func (h *ChatHandler) GetChatSessions(c *gin.Context) {
 			ID:        s.ID,
 			UserID:    s.UserID,
 			Title:     s.Title,
+			Type:      s.Type,
 			CreatedAt: s.CreatedAt,
-			UpdatedAt: s.UpdatedAt,
 		}
 	}
 

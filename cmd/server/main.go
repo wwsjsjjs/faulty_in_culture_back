@@ -22,17 +22,10 @@ import (
 	_ "faulty_in_culture/go_back/docs" // 导入swagger文档
 )
 
-// @title 排名系统API
+// @title faulty_in_culture 管理系统
 // @version 1.0
-// @description 这是一个用户排名管理系统的API文档
+// @description 这是一个用户管理系统的API文档。
 // @termsOfService http://swagger.io/terms/
-
-// @contact.name API支持
-// @contact.url http://www.swagger.io/support
-// @contact.email support@swagger.io
-
-// @license.name Apache 2.0
-// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
 // @host localhost:8080
 // @BasePath /

@@ -6,24 +6,24 @@ import (
 	"gorm.io/gorm"
 )
 
-// ChatSession 聊天会话模型
 type ChatSession struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
-	UserID    uint           `gorm:"index;not null" json:"user_id"`     // 用户ID
-	Title     string         `gorm:"type:varchar(200)" json:"title"`    // 会话标题
-	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`  // 创建时间
-	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`  // 更新时间
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"` // 软删除
+	UserID    uint           `gorm:"index;not null" json:"user_id"`
+	User      User           `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	Title     string         `gorm:"type:varchar(255);not null" json:"title"`
+	Type      int            `gorm:"not null;default:1" json:"type"`
+	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
-// ChatMessage 聊天消息模型
 type ChatMessage struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
-	SessionID uint           `gorm:"index;not null" json:"session_id"`      // 会话ID
-	Role      string         `gorm:"type:varchar(20);not null" json:"role"` // user/assistant
-	Content   string         `gorm:"type:text;not null" json:"content"`     // 消息内容
-	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`      // 创建时间
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`     // 软删除
+	SessionID uint           `gorm:"index:idx_session_created;not null" json:"session_id"`
+	Session   ChatSession    `gorm:"foreignKey:SessionID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	Role      int            `gorm:"not null;default:1" json:"role"`
+	Content   string         `gorm:"type:text;not null" json:"content"`
+	CreatedAt time.Time      `gorm:"index:idx_session_created;autoCreateTime" json:"created_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // TableName 自定义表名

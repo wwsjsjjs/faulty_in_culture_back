@@ -55,13 +55,11 @@ func SendMessage(c *gin.Context) {
 
 	taskID := uuid.New().String()
 
-	// 创建消息记录（pending 状态）
-	// 注意：这里不保存返回内容，只保存请求消息
 	message := models.Message{
 		TaskID:  taskID,
 		UserID:  req.UserID,
-		Content: req.Message, // 这是请求消息
-		Status:  "pending",
+		Content: req.Message,
+		Status:  0,
 	}
 	if err := database.DB.Create(&message).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建消息记录失败"})
@@ -75,8 +73,7 @@ func SendMessage(c *gin.Context) {
 	}
 	err := queue.EnqueueDelayedMessage(taskID, req.UserID, req.Message, time.Duration(delaySeconds)*time.Second)
 	if err != nil {
-		// 入队失败，更新消息状态为 failed
-		database.DB.Model(&message).Update("status", "failed")
+		database.DB.Model(&message).Update("status", 2)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "任务入队失败"})
 		return
 	}
@@ -118,6 +115,11 @@ func QueryResult(c *gin.Context) {
 }
 
 // HandleWebSocket WebSocket 连接处理
+// @Summary WebSocket 连接
+// @Description 建立 WebSocket 连接，接收实时消息推送
+// @Tags message
+// @Param user_id query string true "用户ID"
+// @Router /ws [get]
 func HandleWebSocket(c *gin.Context) {
 	userID := c.Query("user_id")
 	if userID == "" {
@@ -193,7 +195,7 @@ func pushOfflineMessages(userID string, conn *websocket.Conn) {
 
 // ProcessDelayedMessage Redis Streams 任务处理函数
 func ProcessDelayedMessage(ctx context.Context, payload *queue.MessagePayload) error {
-	logger.Warn("处理延迟任务", zap.String("taskID", payload.TaskID), zap.String("userID", payload.UserID))
+	logger.Warn("处理延迟任务", zap.String("taskID", payload.TaskID), zap.Uint("userID", payload.UserID))
 
 	// 模拟处理逻辑，生成返回结果（实际应用中可能是复杂的处理）
 	// 这里假设返回的文本与请求不一样
@@ -201,20 +203,18 @@ func ProcessDelayedMessage(ctx context.Context, payload *queue.MessagePayload) e
 		payload.Message,
 		time.Now().Format("2006-01-02 15:04:05"))
 
-	// 更新消息状态为 completed，并写入返回结果
-	now := time.Now()
 	if err := database.DB.Model(&models.Message{}).
 		Where("task_id = ?", payload.TaskID).
 		Updates(map[string]interface{}{
-			"status":       "completed",
-			"content":      resultMessage, // 更新为返回的文本
-			"processed_at": &now,
+			"status":  1,
+			"content": resultMessage,
 		}).Error; err != nil {
 		logger.Warn("更新消息状态失败", zap.Error(err))
 	}
 
 	// 检查用户是否在线
-	if wsManager.IsOnline(payload.UserID) {
+	userIDStr := fmt.Sprintf("%d", payload.UserID)
+	if wsManager.IsOnline(userIDStr) {
 		// 在线，通过 WebSocket 推送
 		msg := map[string]interface{}{
 			"task_id": payload.TaskID,
@@ -222,18 +222,18 @@ func ProcessDelayedMessage(ctx context.Context, payload *queue.MessagePayload) e
 			"type":    "realtime",
 		}
 		data, _ := json.Marshal(msg)
-		if err := wsManager.SendMessage(payload.UserID, data); err != nil {
+		if err := wsManager.SendMessage(userIDStr, data); err != nil {
 			logger.Warn("WebSocket 推送失败", zap.Error(err))
 			// 推送失败，存储为离线消息
 			return queue.StoreOfflineMessage(payload.TaskID, resultMessage)
 		}
-		logger.Warn("已通过 WebSocket 推送消息", zap.String("userID", payload.UserID), zap.String("taskID", payload.TaskID))
+		logger.Warn("已通过 WebSocket 推送消息", zap.Uint("userID", payload.UserID), zap.String("taskID", payload.TaskID))
 	} else {
 		// 离线，存储到 Redis
 		if err := queue.StoreOfflineMessage(payload.TaskID, resultMessage); err != nil {
 			return fmt.Errorf("存储离线消息失败: %v", err)
 		}
-		logger.Warn("用户离线，消息已存储", zap.String("userID", payload.UserID), zap.String("taskID", payload.TaskID))
+		logger.Warn("用户离线，消息已存储", zap.Uint("userID", payload.UserID), zap.String("taskID", payload.TaskID))
 	}
 
 	return nil
@@ -294,18 +294,15 @@ func GetMessages(c *gin.Context) {
 		return
 	}
 
-	// 转换为 VO
 	var messageResponses []vo.MessageResponse
 	for _, msg := range messages {
 		messageResponses = append(messageResponses, vo.MessageResponse{
-			ID:          msg.ID,
-			TaskID:      msg.TaskID,
-			UserID:      msg.UserID,
-			Content:     msg.Content,
-			Status:      msg.Status,
-			ProcessedAt: msg.ProcessedAt,
-			CreatedAt:   msg.CreatedAt,
-			UpdatedAt:   msg.UpdatedAt,
+			ID:        msg.ID,
+			TaskID:    msg.TaskID,
+			UserID:    msg.UserID,
+			Content:   msg.Content,
+			Status:    msg.Status,
+			CreatedAt: msg.CreatedAt,
 		})
 	}
 

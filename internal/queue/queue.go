@@ -26,7 +26,7 @@ var (
 // MessagePayload 消息任务载体
 type MessagePayload struct {
 	TaskID      string `json:"task_id"`
-	UserID      string `json:"user_id"`
+	UserID      uint   `json:"user_id"`
 	Message     string `json:"message"`
 	ProcessTime int64  `json:"process_time"` // Unix 时间戳，何时应该处理
 }
@@ -55,7 +55,7 @@ func InitQueue(redisAddr, password string, db int) error {
 }
 
 // EnqueueDelayedMessage 入队延迟消息任务
-func EnqueueDelayedMessage(taskID, userID, message string, delay time.Duration) error {
+func EnqueueDelayedMessage(taskID string, userID uint, message string, delay time.Duration) error {
 	processTime := time.Now().Add(delay).Unix()
 
 	payload := MessagePayload{
@@ -83,7 +83,7 @@ func EnqueueDelayedMessage(taskID, userID, message string, delay time.Duration) 
 		return fmt.Errorf("添加消息到 Stream 失败: %v", err)
 	}
 
-	logger.Info("任务已入队", zap.String("taskID", taskID), zap.String("userID", userID), zap.Duration("delay", delay), zap.String("msgID", msgID))
+	logger.Info("任务已入队", zap.String("taskID", taskID), zap.Uint("userID", userID), zap.Duration("delay", delay), zap.String("msgID", msgID))
 	return nil
 }
 

@@ -36,14 +36,12 @@ func InitDatabase() error {
 
 	logger.Info("Database connection established (MySQL)")
 
-	// 自动迁移数据库表结构
 	err = DB.AutoMigrate(
-		&models.Ranking{},
 		&models.User{},
-		&models.Message{},
 		&models.SaveGame{},
 		&models.ChatSession{},
 		&models.ChatMessage{},
+		&models.Message{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %v", err)
@@ -51,36 +49,7 @@ func InitDatabase() error {
 
 	logger.Info("Database migration completed")
 
-	// 插入一些初始测试数据（可选）
-	seedData()
-
 	return nil
-}
-
-// seedData 插入初始测试数据
-// 类型：私有辅助函数
-// 功能：如表为空则插入默认测试数据，便于开发和演示
-// seedData 插入初始测试数据（如表为空则插入默认测试数据，便于开发和演示）
-func seedData() {
-	var count int64
-	DB.Model(&models.Ranking{}).Count(&count)
-
-	// 如果表中没有数据，插入测试数据
-	if count == 0 {
-		testData := []models.Ranking{
-			{Username: "Alice", Score: 1500},
-			{Username: "Bob", Score: 2000},
-			{Username: "Charlie", Score: 1200},
-			{Username: "David", Score: 1800},
-			{Username: "Eve", Score: 2500},
-		}
-
-		for _, data := range testData {
-			DB.Create(&data)
-		}
-
-		logger.Info("Test data inserted successfully")
-	}
 }
 
 // GetDB 获取数据库实例

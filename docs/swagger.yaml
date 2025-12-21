@@ -3,10 +3,8 @@ definitions:
   dto.ChatMessageRequest:
     properties:
       content:
-        description: 消息内容
         type: string
       session_id:
-        description: 聊天会话ID
         type: integer
     required:
     - content
@@ -15,65 +13,38 @@ definitions:
   dto.ChatStartRequest:
     properties:
       title:
-        description: 聊天标题（可选）
         type: string
-    type: object
-  dto.CreateRankingRequest:
-    properties:
-      score:
-        description: Score 分数
-        example: 1000
-        minimum: 0
-        type: integer
-      username:
-        description: Username 用户名
-        example: player1
-        maxLength: 100
-        minLength: 1
-        type: string
-    required:
-    - score
-    - username
     type: object
   dto.SaveGameRequest:
     properties:
-      data:
-        description: 存档数据（JSON字符串）
+      game_data:
         type: string
     required:
-    - data
+    - game_data
     type: object
   dto.SendMessageRequest:
     properties:
       message:
         type: string
       user_id:
-        type: string
+        type: integer
     required:
     - message
     - user_id
     type: object
-  dto.UpdateRankingRequest:
+  dto.UpdateScoreRequest:
     properties:
       score:
-        description: Score 分数（可选）
-        example: 1500
         minimum: 0
         type: integer
-      username:
-        description: Username 用户名
-        example: player1
-        maxLength: 100
-        minLength: 1
-        type: string
+    required:
+    - score
     type: object
   dto.UserLoginRequest:
     properties:
       password:
-        description: Password 密码
         type: string
       username:
-        description: Username 用户名
         type: string
     required:
     - password
@@ -82,40 +53,12 @@ definitions:
   dto.UserRegisterRequest:
     properties:
       password:
-        description: Password 密码
         type: string
       username:
-        description: Username 用户名
         type: string
     required:
     - password
     - username
-    type: object
-  models.Ranking:
-    description: 用户排名信息
-    properties:
-      created_at:
-        description: 创建时间
-        example: "2023-12-20T10:00:00Z"
-        format: date-time
-        type: string
-      id:
-        description: 主键ID
-        example: 1
-        type: integer
-      score:
-        description: 分数
-        example: 1000
-        type: integer
-      updated_at:
-        description: 更新时间
-        example: "2023-12-20T10:00:00Z"
-        format: date-time
-        type: string
-      username:
-        description: 用户名（唯一）
-        example: player1
-        type: string
     type: object
   vo.ChatHistoryResponse:
     properties:
@@ -135,7 +78,7 @@ definitions:
       id:
         type: integer
       role:
-        type: string
+        type: integer
       session_id:
         type: integer
     type: object
@@ -147,8 +90,8 @@ definitions:
         type: integer
       title:
         type: string
-      updated_at:
-        type: string
+      type:
+        type: integer
       user_id:
         type: integer
     type: object
@@ -180,16 +123,12 @@ definitions:
         type: string
       id:
         type: integer
-      processed_at:
-        type: string
       status:
-        type: string
+        type: integer
       task_id:
         type: string
-      updated_at:
-        type: string
       user_id:
-        type: string
+        type: integer
     type: object
   vo.RankingResponse:
     properties:
@@ -222,16 +161,12 @@ definitions:
     type: object
   vo.SaveGameResponse:
     properties:
-      created_at:
+      game_data:
         type: string
-      data:
+      saved_at:
         type: string
-      id:
-        type: integer
       slot_number:
         type: integer
-      updated_at:
-        type: string
       user_id:
         type: integer
     type: object
@@ -253,16 +188,10 @@ definitions:
     type: object
 host: localhost:8080
 info:
-  contact:
-    email: support@swagger.io
-    name: API支持
-    url: http://www.swagger.io/support
-  description: 这是一个用户排名管理系统的API文档
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  contact: {}
+  description: 这是一个用户管理系统的API文档。
   termsOfService: http://swagger.io/terms/
-  title: 排名系统API
+  title: faulty_in_culture 管理系统
   version: "1.0"
 paths:
   /api/chat/{session_id}:
@@ -470,7 +399,7 @@ paths:
       - message
   /api/rankings:
     get:
-      description: 获取所有排名记录，按分数降序排列
+      description: 获取用户排行榜，按分数降序排列
       parameters:
       - default: 1
         description: 页码
@@ -495,142 +424,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/vo.ErrorResponse'
-      summary: 获取排名列表
+      summary: 获取排行榜
       tags:
-      - rankings
-    post:
-      consumes:
-      - application/json
-      description: 创建一个新的用户排名记录
-      parameters:
-      - description: 排名信息
-        in: body
-        name: ranking
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreateRankingRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Ranking'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      summary: 创建新的排名记录
-      tags:
-      - rankings
-  /api/rankings/{id}:
-    delete:
-      description: 根据ID删除排名记录（软删除）
-      parameters:
-      - description: 排名ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/vo.SuccessMessageResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      summary: 删除排名记录
-      tags:
-      - rankings
-    get:
-      description: 根据ID获取单个排名记录
-      parameters:
-      - description: 排名ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Ranking'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      summary: 获取单个排名
-      tags:
-      - rankings
-    put:
-      consumes:
-      - application/json
-      description: 根据ID更新排名记录
-      parameters:
-      - description: 排名ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: 更新信息
-        in: body
-        name: ranking
-        required: true
-        schema:
-          $ref: '#/definitions/dto.UpdateRankingRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Ranking'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      summary: 更新排名记录
-      tags:
-      - rankings
-  /api/rankings/top:
-    get:
-      description: 获取分数最高的前N名用户
-      parameters:
-      - default: 10
-        description: 前N名
-        in: query
-        name: top
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/vo.RankingResponse'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      summary: 获取排行榜前N名
-      tags:
-      - rankings
+      - user
   /api/register:
     post:
       consumes:
@@ -795,6 +591,56 @@ paths:
               type: string
             type: object
       summary: 发送延迟消息
+      tags:
+      - message
+  /api/user/score:
+    put:
+      consumes:
+      - application/json
+      description: 更新当前用户的分数
+      parameters:
+      - description: 分数信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateScoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/vo.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 更新用户分数
+      tags:
+      - user
+  /ws:
+    get:
+      description: 建立 WebSocket 连接，接收实时消息推送
+      parameters:
+      - description: 用户ID
+        in: query
+        name: user_id
+        required: true
+        type: string
+      responses: {}
+      summary: WebSocket 连接
       tags:
       - message
 schemes:

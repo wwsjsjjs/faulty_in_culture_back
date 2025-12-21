@@ -67,12 +67,10 @@ func (h *SaveGameHandler) GetSaveGames(c *gin.Context) {
 	responses = make([]vo.SaveGameResponse, len(saveGames))
 	for i, sg := range saveGames {
 		responses[i] = vo.SaveGameResponse{
-			ID:         sg.ID,
 			UserID:     sg.UserID,
 			SlotNumber: sg.SlotNumber,
-			Data:       sg.Data,
-			CreatedAt:  sg.CreatedAt,
-			UpdatedAt:  sg.UpdatedAt,
+			GameData:   sg.GameData,
+			SavedAt:    sg.SavedAt,
 		}
 	}
 
@@ -117,7 +115,7 @@ func (h *SaveGameHandler) GetSaveGame(c *gin.Context) {
 	cacheClient := cache.GetCache()
 	if cacheClient != nil {
 		err := cacheClient.Get(cacheKey, &response)
-		if err == nil && response.ID > 0 {
+		if err == nil && response.UserID > 0 {
 			// 缓存命中
 			c.JSON(http.StatusOK, response)
 			return
@@ -132,12 +130,10 @@ func (h *SaveGameHandler) GetSaveGame(c *gin.Context) {
 	}
 
 	response = vo.SaveGameResponse{
-		ID:         saveGame.ID,
 		UserID:     saveGame.UserID,
 		SlotNumber: saveGame.SlotNumber,
-		Data:       saveGame.Data,
-		CreatedAt:  saveGame.CreatedAt,
-		UpdatedAt:  saveGame.UpdatedAt,
+		GameData:   saveGame.GameData,
+		SavedAt:    saveGame.SavedAt,
 	}
 
 	// 缓存结果（5分钟）
@@ -188,11 +184,10 @@ func (h *SaveGameHandler) CreateOrUpdateSaveGame(c *gin.Context) {
 	result := database.DB.Where("user_id = ? AND slot_number = ?", userID, slotNumber).First(&saveGame)
 
 	if result.Error != nil {
-		// 不存在，创建新存档
 		saveGame = models.SaveGame{
 			UserID:     userID,
 			SlotNumber: slotNumber,
-			Data:       req.Data,
+			GameData:   req.GameData,
 		}
 		if err := database.DB.Create(&saveGame).Error; err != nil {
 			logger.Error("创建存档失败", zap.Error(err))
@@ -200,8 +195,7 @@ func (h *SaveGameHandler) CreateOrUpdateSaveGame(c *gin.Context) {
 			return
 		}
 	} else {
-		// 已存在，更新
-		saveGame.Data = req.Data
+		saveGame.GameData = req.GameData
 		if err := database.DB.Save(&saveGame).Error; err != nil {
 			logger.Error("更新存档失败", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: "更新存档失败"})
@@ -217,12 +211,10 @@ func (h *SaveGameHandler) CreateOrUpdateSaveGame(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, vo.SaveGameResponse{
-		ID:         saveGame.ID,
 		UserID:     saveGame.UserID,
 		SlotNumber: saveGame.SlotNumber,
-		Data:       saveGame.Data,
-		CreatedAt:  saveGame.CreatedAt,
-		UpdatedAt:  saveGame.UpdatedAt,
+		GameData:   saveGame.GameData,
+		SavedAt:    saveGame.SavedAt,
 	})
 }
 
