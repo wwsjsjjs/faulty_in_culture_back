@@ -1,12 +1,14 @@
 package scheduler
 
 import (
-	"log"
+	"faulty_in_culture/go_back/internal/logger"
 	"time"
 
 	"faulty_in_culture/go_back/internal/config"
 	"faulty_in_culture/go_back/internal/database"
 	"faulty_in_culture/go_back/internal/models"
+
+	"go.uber.org/zap"
 )
 
 // StartMessageCleanupScheduler 启动定时清理过期消息的调度器
@@ -28,7 +30,7 @@ func StartMessageCleanupScheduler() {
 		}
 		duration := next.Sub(now)
 
-		log.Printf("定时清理任务已启动，下次执行时间: %s", next.Format("2006-01-02 15:04:05"))
+		logger.Info("定时清理任务已启动", zap.String("next_time", next.Format("2006-01-02 15:04:05")))
 
 		// 等待到下一次执行时间
 		time.Sleep(duration)
@@ -60,9 +62,9 @@ func cleanupOldMessages() {
 		Delete(&models.Message{})
 
 	if result.Error != nil {
-		log.Printf("清理过期消息失败: %v", result.Error)
+		logger.Warn("清理过期消息失败", zap.Error(result.Error))
 	} else {
-		log.Printf("清理过期消息完成，删除了 %d 条记录（%d 天前的已完成消息）", result.RowsAffected, cleanupDays)
+		logger.Warn("清理过期消息完成", zap.Int64("deleted", result.RowsAffected), zap.Int("days", cleanupDays))
 	}
 }
 
@@ -80,8 +82,8 @@ func CleanupFailedMessages() {
 		Delete(&models.Message{})
 
 	if result.Error != nil {
-		log.Printf("清理失败消息失败: %v", result.Error)
+		logger.Warn("清理失败消息失败", zap.Error(result.Error))
 	} else {
-		log.Printf("清理失败消息完成，删除了 %d 条记录（%d 天前的失败消息）", result.RowsAffected, failedCleanupDays)
+		logger.Warn("清理失败消息完成", zap.Int64("deleted", result.RowsAffected), zap.Int("days", failedCleanupDays))
 	}
 }

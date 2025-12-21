@@ -3,11 +3,12 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"faulty_in_culture/go_back/internal/logger"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 const (
@@ -49,7 +50,7 @@ func InitQueue(redisAddr, password string, db int) error {
 		return fmt.Errorf("创建消费者组失败: %v", err)
 	}
 
-	log.Println("Redis Streams 队列已初始化")
+	logger.Info("Redis Streams 队列已初始化")
 	return nil
 }
 
@@ -82,14 +83,14 @@ func EnqueueDelayedMessage(taskID, userID, message string, delay time.Duration) 
 		return fmt.Errorf("添加消息到 Stream 失败: %v", err)
 	}
 
-	log.Printf("任务已入队: taskID=%s, userID=%s, delay=%v, msgID=%s", taskID, userID, delay, msgID)
+	logger.Info("任务已入队", zap.String("taskID", taskID), zap.String("userID", userID), zap.Duration("delay", delay), zap.String("msgID", msgID))
 	return nil
 }
 
 // StartWorker 启动 Redis Streams 消费者
 func StartWorker(handler func(context.Context, *MessagePayload) error) {
 	go func() {
-		log.Println("Redis Streams worker 已启动")
+		logger.Info("Redis Streams worker 已启动")
 
 		for {
 			// 读取消息（阻塞模式，等待新消息）
@@ -105,7 +106,7 @@ func StartWorker(handler func(context.Context, *MessagePayload) error) {
 				if err == redis.Nil {
 					continue // 没有新消息
 				}
-				log.Printf("读取消息失败: %v", err)
+				logger.Error("读取消息失败", zap.Error(err))
 				time.Sleep(1 * time.Second)
 				continue
 			}
@@ -124,14 +125,14 @@ func StartWorker(handler func(context.Context, *MessagePayload) error) {
 func processMessage(msg redis.XMessage, handler func(context.Context, *MessagePayload) error) {
 	dataStr, ok := msg.Values["data"].(string)
 	if !ok {
-		log.Printf("消息格式错误: %v", msg.ID)
+		logger.Warn("消息格式错误", zap.String("msgID", msg.ID))
 		rdb.XAck(ctx, StreamName, ConsumerGroup, msg.ID)
 		return
 	}
 
 	var payload MessagePayload
 	if err := json.Unmarshal([]byte(dataStr), &payload); err != nil {
-		log.Printf("解析消息失败: %v", err)
+		logger.Error("解析消息失败", zap.Error(err))
 		rdb.XAck(ctx, StreamName, ConsumerGroup, msg.ID)
 		return
 	}
@@ -146,7 +147,7 @@ func processMessage(msg redis.XMessage, handler func(context.Context, *MessagePa
 
 	// 执行处理逻辑
 	if err := handler(ctx, &payload); err != nil {
-		log.Printf("处理消息失败: taskID=%s, error=%v", payload.TaskID, err)
+		logger.Error("处理消息失败", zap.String("taskID", payload.TaskID), zap.Error(err))
 		// 这里可以实现重试逻辑
 	}
 
@@ -186,6 +187,6 @@ func GetUserOfflineMessages(userID string) ([]string, error) {
 func Shutdown() {
 	if rdb != nil {
 		rdb.Close()
-		log.Println("Redis 连接已关闭")
+		logger.Info("Redis 连接已关闭")
 	}
 }

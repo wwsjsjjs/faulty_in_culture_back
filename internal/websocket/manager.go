@@ -1,11 +1,12 @@
 package websocket
 
 import (
-	"log"
+	"faulty_in_culture/go_back/internal/logger"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 // Manager WebSocket 连接管理器
@@ -29,7 +30,7 @@ func (m *Manager) Register(userID string, conn *websocket.Conn) {
 	defer m.mu.Unlock()
 	m.clients[userID] = conn
 	m.lastActive[userID] = time.Now()
-	log.Printf("用户 %s 已连接", userID)
+	logger.Info("WebSocket 用户已连接", zap.String("userID", userID))
 }
 
 // Unregister 注销用户连接
@@ -40,7 +41,7 @@ func (m *Manager) Unregister(userID string) {
 		conn.Close()
 		delete(m.clients, userID)
 		delete(m.lastActive, userID)
-		log.Printf("用户 %s 已断开连接", userID)
+		logger.Info("WebSocket 用户已断开连接", zap.String("userID", userID))
 	}
 }
 
@@ -86,7 +87,7 @@ func (m *Manager) StartHeartbeat(interval, timeout time.Duration) {
 			for userID, conn := range m.clients {
 				// 发送Ping
 				if err := conn.WriteMessage(websocket.PingMessage, []byte("ping")); err != nil {
-					log.Printf("Ping 用户 %s 失败: %v", userID, err)
+					logger.Warn("WebSocket Ping 用户失败", zap.String("userID", userID), zap.Error(err))
 				}
 			}
 			m.mu.RUnlock()
@@ -103,7 +104,7 @@ func (m *Manager) StartHeartbeat(interval, timeout time.Duration) {
 			m.mu.RUnlock()
 			for _, userID := range toRemove {
 				m.Unregister(userID)
-				log.Printf("用户 %s 心跳超时，已强制下线", userID)
+				logger.Warn("WebSocket 用户心跳超时，已强制下线", zap.String("userID", userID))
 			}
 		}
 	}()

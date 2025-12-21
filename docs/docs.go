@@ -573,7 +573,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/vo.MessageResponse"
+                            "$ref": "#/definitions/vo.SuccessMessageResponse"
                         }
                     },
                     "404": {
@@ -790,7 +790,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/vo.MessageResponse"
+                            "$ref": "#/definitions/vo.SuccessMessageResponse"
                         }
                     },
                     "401": {
@@ -1094,10 +1094,29 @@ const docTemplate = `{
         "vo.MessageResponse": {
             "type": "object",
             "properties": {
-                "message": {
-                    "description": "Message 消息内容",
-                    "type": "string",
-                    "example": "success"
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "processed_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -1158,6 +1177,16 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "vo.SuccessMessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Message 消息内容",
+                    "type": "string",
+                    "example": "success"
                 }
             }
         },

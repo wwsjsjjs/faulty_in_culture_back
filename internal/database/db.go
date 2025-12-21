@@ -1,15 +1,15 @@
 package database
 
 import (
+	"faulty_in_culture/go_back/internal/logger"
 	"fmt"
-	"log"
 
 	"faulty_in_culture/go_back/internal/config"
 	"faulty_in_culture/go_back/internal/models"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 // DB 全局数据库实例
@@ -28,13 +28,13 @@ func InitDatabase() error {
 		dbConf.User, dbConf.Password, dbConf.Host, dbConf.Port, dbConf.Name, dbConf.Charset)
 
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: gormlogger.Default.LogMode(gormlogger.Warn),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to connect database: %v", err)
 	}
 
-	log.Println("Database connection established (MySQL)")
+	logger.Info("Database connection established (MySQL)")
 
 	// 自动迁移数据库表结构
 	err = DB.AutoMigrate(
@@ -49,7 +49,7 @@ func InitDatabase() error {
 		return fmt.Errorf("failed to migrate database: %v", err)
 	}
 
-	log.Println("Database migration completed")
+	logger.Info("Database migration completed")
 
 	// 插入一些初始测试数据（可选）
 	seedData()
@@ -79,7 +79,7 @@ func seedData() {
 			DB.Create(&data)
 		}
 
-		log.Println("Test data inserted successfully")
+		logger.Info("Test data inserted successfully")
 	}
 }
 

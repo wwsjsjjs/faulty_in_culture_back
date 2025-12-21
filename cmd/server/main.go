@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -10,12 +9,15 @@ import (
 	"faulty_in_culture/go_back/internal/config"
 	"faulty_in_culture/go_back/internal/database"
 	"faulty_in_culture/go_back/internal/handlers"
+	"faulty_in_culture/go_back/internal/logger"
+	"faulty_in_culture/go_back/internal/middleware"
 	"faulty_in_culture/go_back/internal/queue"
 	"faulty_in_culture/go_back/internal/routes"
 	"faulty_in_culture/go_back/internal/scheduler"
 	ws "faulty_in_culture/go_back/internal/websocket"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	_ "faulty_in_culture/go_back/docs" // 导入swagger文档
 )
@@ -36,48 +38,77 @@ import (
 // @BasePath /
 // @schemes http
 func main() {
+	// 初始化日志系统（开发模式输出到终端）
+	logMode := os.Getenv("LOG_MODE")
+	if logMode == "" {
+		logMode = "dev" // 默认开发模式
+	}
+	if err := logger.InitLogger(logMode); err != nil {
+		logger.Error("main: 初始化 logger 失败", zap.Error(err))
+		os.Exit(1)
+	}
+	defer logger.Sync()
+
+	logger.Info("main: 应用程序启动")
+
 	// 加载配置
 	configPath := "config.yaml"
 	if _, err := os.Stat(configPath); err == nil {
-		// 存在 config.yaml
-		importConfig := "faulty_in_culture/go_back/internal/config"
-		_ = importConfig // 避免未使用错误
+		logger.Info("main: 加载配置文件", zap.String("path", configPath))
 		config.LoadConfig(configPath)
 	} else {
-		log.Fatalf("Config file not found: %v", err)
+		logger.Error("main: 配置文件不存在", zap.String("path", configPath), zap.Error(err))
+		os.Exit(1)
 	}
 
 	// 初始化数据库
+	logger.Info("main: 初始化数据库")
 	if err := database.InitDatabase(); err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		logger.Error("main: 数据库初始化失败", zap.Error(err))
+		os.Exit(1)
 	}
+	logger.Info("main: 数据库初始化成功")
 
 	// 初始化 Redis 缓存
+	logger.Info("main: 初始化 Redis 缓存")
 	if err := cache.InitCache(); err != nil {
-		log.Printf("Warning: Failed to initialize cache: %v", err)
-		log.Println("Server will continue without caching")
+		logger.Warn("main: Redis 缓存初始化失败，服务将继续运行但无缓存功能", zap.Error(err))
 	} else {
-		log.Println("Redis cache initialized successfully")
+		logger.Info("main: Redis 缓存初始化成功")
+	}
+
+	// 初始化限流器
+	redisConf := config.AppConfig.Redis
+	redisAddr := fmt.Sprintf("%s:%d", redisConf.Host, redisConf.Port)
+	logger.Info("main: 初始化限流器", zap.String("redisAddr", redisAddr))
+	if err := middleware.InitLimiters(redisAddr, redisConf.Password, redisConf.DB); err != nil {
+		logger.Error("main: 限流器初始化失败", zap.Error(err))
+		os.Exit(1)
 	}
 
 	// 初始化 WebSocket 管理器
+	logger.Info("main: 初始化 WebSocket 管理器")
 	wsManager := ws.NewManager()
 	// 启动 WebSocket 心跳检测，10秒检测一次，30秒未活跃自动清理
 	wsManager.StartHeartbeat(10*time.Second, 30*time.Second)
 	handlers.InitMessageHandler(wsManager)
+	logger.Info("main: WebSocket 管理器初始化成功")
 
 	// 初始化消息队列（使用 Redis Streams）
-	redisConf := config.AppConfig.Redis
-	redisAddr := fmt.Sprintf("%s:%d", redisConf.Host, redisConf.Port)
+	logger.Info("main: 初始化消息队列")
 	if err := queue.InitQueue(redisAddr, redisConf.Password, redisConf.DB); err != nil {
-		log.Fatalf("Failed to initialize message queue: %v", err)
+		logger.Error("main: 消息队列初始化失败", zap.Error(err))
+		os.Exit(1)
 	}
 	defer queue.Shutdown()
+	logger.Info("main: 消息队列初始化成功")
 
 	// 启动 Redis Streams worker
+	logger.Info("main: 启动消息队列 worker")
 	queue.StartWorker(handlers.ProcessDelayedMessage)
 
 	// 启动定时清理任务
+	logger.Info("main: 启动定时清理任务")
 	scheduler.StartMessageCleanupScheduler()
 
 	// 设置Gin模式（开发环境使用debug，生产环境使用release）
@@ -86,6 +117,7 @@ func main() {
 		mode = gin.DebugMode
 	}
 	gin.SetMode(mode)
+	logger.Info("main: 设置 Gin 模式", zap.String("mode", mode))
 
 	// 创建Gin路由器
 	router := gin.Default()
@@ -94,6 +126,7 @@ func main() {
 	router.Use(corsMiddleware())
 
 	// 设置路由（传递 wsManager）
+	logger.Info("main: 设置路由")
 	routes.SetupRoutes(router, wsManager)
 
 	// 获取端口
@@ -103,12 +136,13 @@ func main() {
 	}
 
 	// 启动服务器
-	log.Printf("Server starting on http://localhost:%s", port)
-	log.Printf("Swagger documentation available at http://localhost:%s/swagger/index.html", port)
-	log.Printf("Health check available at http://localhost:%s/health", port)
+	logger.Info("main: 启动服务器", zap.String("port", port))
+	logger.Info("main: Swagger 文档地址", zap.String("swagger", fmt.Sprintf("http://localhost:%s/swagger/index.html", port)))
+	logger.Info("main: 健康检查地址", zap.String("health", fmt.Sprintf("http://localhost:%s/health", port)))
 
 	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		logger.Error("main: 服务器启动失败", zap.Error(err))
+		os.Exit(1)
 	}
 }
 

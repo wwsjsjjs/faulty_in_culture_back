@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"faulty_in_culture/go_back/internal/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/ulule/limiter/v3"
 	limiterGin "github.com/ulule/limiter/v3/drivers/middleware/gin"
 	redisStore "github.com/ulule/limiter/v3/drivers/store/redis"
+	"go.uber.org/zap"
 )
 
 var (
@@ -19,6 +22,7 @@ func InitLimiters() {
 	})
 	store, err := redisStore.NewStoreWithOptions(client, limiter.StoreOptions{})
 	if err != nil {
+		logger.Error("限流器初始化失败", zap.Error(err))
 		panic(err)
 	}
 

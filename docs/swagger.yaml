@@ -174,9 +174,21 @@ definitions:
     type: object
   vo.MessageResponse:
     properties:
-      message:
-        description: Message 消息内容
-        example: success
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      processed_at:
+        type: string
+      status:
+        type: string
+      task_id:
+        type: string
+      updated_at:
+        type: string
+      user_id:
         type: string
     type: object
   vo.RankingResponse:
@@ -222,6 +234,13 @@ definitions:
         type: string
       user_id:
         type: integer
+    type: object
+  vo.SuccessMessageResponse:
+    properties:
+      message:
+        description: Message 消息内容
+        example: success
+        type: string
     type: object
   vo.UserVO:
     properties:
@@ -523,7 +542,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/vo.MessageResponse'
+            $ref: '#/definitions/vo.SuccessMessageResponse'
         "404":
           description: Not Found
           schema:
@@ -676,7 +695,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/vo.MessageResponse'
+            $ref: '#/definitions/vo.SuccessMessageResponse'
         "401":
           description: Unauthorized
           schema:

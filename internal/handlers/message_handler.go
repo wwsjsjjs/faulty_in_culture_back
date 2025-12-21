@@ -3,23 +3,24 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"faulty_in_culture/go_back/internal/logger"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 
 	"faulty_in_culture/go_back/internal/config"
 	"faulty_in_culture/go_back/internal/database"
 	"faulty_in_culture/go_back/internal/dto"
 
-	"github.com/yourusername/ranking-api/internal/models"
-	"github.com/yourusername/ranking-api/internal/queue"
-	"github.com/yourusername/ranking-api/internal/vo"
-	ws "github.com/yourusername/ranking-api/internal/websocket"
+	"faulty_in_culture/go_back/internal/models"
+	"faulty_in_culture/go_back/internal/queue"
+	"faulty_in_culture/go_back/internal/vo"
+	ws "faulty_in_culture/go_back/internal/websocket"
 )
 
 var (
@@ -126,7 +127,7 @@ func HandleWebSocket(c *gin.Context) {
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Println("WebSocket 升级失败:", err)
+		logger.Info("WebSocket 升级失败", zap.Error(err))
 		return
 	}
 
@@ -147,12 +148,12 @@ func HandleWebSocket(c *gin.Context) {
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("读取消息失败:", err)
+			logger.Info("读取消息失败", zap.Error(err))
 			break
 		}
 		// 收到消息时也更新活跃时间
 		wsManager.UpdateActiveTime(userID)
-		log.Printf("收到来自用户 %s 的消息: %s", userID, string(message))
+		logger.Warn("收到来自用户的消息", zap.String("userID", userID), zap.String("message", string(message)))
 	}
 }
 
@@ -160,7 +161,7 @@ func HandleWebSocket(c *gin.Context) {
 func pushOfflineMessages(userID string, conn *websocket.Conn) {
 	keys, err := queue.GetUserOfflineMessages(userID)
 	if err != nil {
-		log.Println("获取离线消息失败:", err)
+		logger.Info("获取离线消息失败", zap.Error(err))
 		return
 	}
 
@@ -180,19 +181,19 @@ func pushOfflineMessages(userID string, conn *websocket.Conn) {
 		}
 		data, _ := json.Marshal(msg)
 		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Println("推送离线消息失败:", err)
+			logger.Info("推送离线消息失败", zap.Error(err))
 			continue
 		}
 
 		// 删除已推送的离线消息
 		queue.DeleteOfflineMessage(taskID)
-		log.Printf("已推送离线消息: userID=%s, taskID=%s", userID, taskID)
+		logger.Warn("已推送离线消息", zap.String("userID", userID), zap.String("taskID", taskID))
 	}
 }
 
 // ProcessDelayedMessage Redis Streams 任务处理函数
 func ProcessDelayedMessage(ctx context.Context, payload *queue.MessagePayload) error {
-	log.Printf("处理延迟任务: taskID=%s, userID=%s", payload.TaskID, payload.UserID)
+	logger.Warn("处理延迟任务", zap.String("taskID", payload.TaskID), zap.String("userID", payload.UserID))
 
 	// 模拟处理逻辑，生成返回结果（实际应用中可能是复杂的处理）
 	// 这里假设返回的文本与请求不一样
@@ -209,7 +210,7 @@ func ProcessDelayedMessage(ctx context.Context, payload *queue.MessagePayload) e
 			"content":      resultMessage, // 更新为返回的文本
 			"processed_at": &now,
 		}).Error; err != nil {
-		log.Printf("更新消息状态失败: %v", err)
+		logger.Warn("更新消息状态失败", zap.Error(err))
 	}
 
 	// 检查用户是否在线
@@ -222,17 +223,17 @@ func ProcessDelayedMessage(ctx context.Context, payload *queue.MessagePayload) e
 		}
 		data, _ := json.Marshal(msg)
 		if err := wsManager.SendMessage(payload.UserID, data); err != nil {
-			log.Printf("WebSocket 推送失败: %v", err)
+			logger.Warn("WebSocket 推送失败", zap.Error(err))
 			// 推送失败，存储为离线消息
 			return queue.StoreOfflineMessage(payload.TaskID, resultMessage)
 		}
-		log.Printf("已通过 WebSocket 推送消息: userID=%s, taskID=%s", payload.UserID, payload.TaskID)
+		logger.Warn("已通过 WebSocket 推送消息", zap.String("userID", payload.UserID), zap.String("taskID", payload.TaskID))
 	} else {
 		// 离线，存储到 Redis
 		if err := queue.StoreOfflineMessage(payload.TaskID, resultMessage); err != nil {
 			return fmt.Errorf("存储离线消息失败: %v", err)
 		}
-		log.Printf("用户离线，消息已存储: userID=%s, taskID=%s", payload.UserID, payload.TaskID)
+		logger.Warn("用户离线，消息已存储", zap.String("userID", payload.UserID), zap.String("taskID", payload.TaskID))
 	}
 
 	return nil

@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"faulty_in_culture/go_back/internal/logger"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 
 	"faulty_in_culture/go_back/internal/cache"
 	"faulty_in_culture/go_back/internal/database"
@@ -45,6 +48,7 @@ func (h *RankingHandler) CreateRanking(c *gin.Context) {
 
 	// 绑定并验证请求
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("创建排名参数错误", zap.Error(err))
 		c.JSON(http.StatusBadRequest, vo.ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -52,6 +56,7 @@ func (h *RankingHandler) CreateRanking(c *gin.Context) {
 	// 检查用户名是否已存在
 	var existing models.Ranking
 	if err := database.DB.Where("username = ?", req.Username).First(&existing).Error; err == nil {
+		logger.Warn("用户名已存在", zap.String("username", req.Username))
 		c.JSON(http.StatusConflict, vo.ErrorResponse{Error: "username already exists"})
 		return
 	}
@@ -63,6 +68,7 @@ func (h *RankingHandler) CreateRanking(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&ranking).Error; err != nil {
+		logger.Error("创建排名失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -125,6 +131,7 @@ func (h *RankingHandler) GetRankings(c *gin.Context) {
 		Limit(limit).
 		Offset(offset).
 		Find(&rankings).Error; err != nil {
+		logger.Error("获取排名失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -166,6 +173,7 @@ func (h *RankingHandler) GetRanking(c *gin.Context) {
 
 	var ranking models.Ranking
 	if err := database.DB.First(&ranking, id).Error; err != nil {
+		logger.Warn("未找到排名", zap.String("id", id))
 		c.JSON(http.StatusNotFound, vo.ErrorResponse{Error: "ranking not found"})
 		return
 	}
@@ -192,12 +200,14 @@ func (h *RankingHandler) UpdateRanking(c *gin.Context) {
 
 	var ranking models.Ranking
 	if err := database.DB.First(&ranking, id).Error; err != nil {
+		logger.Warn("更新排名时未找到", zap.String("id", id))
 		c.JSON(http.StatusNotFound, vo.ErrorResponse{Error: "ranking not found"})
 		return
 	}
 
 	var req dto.UpdateRankingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("更新排名参数错误", zap.Error(err))
 		c.JSON(http.StatusBadRequest, vo.ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -207,6 +217,7 @@ func (h *RankingHandler) UpdateRanking(c *gin.Context) {
 		// 检查新用户名是否已被其他记录使用
 		var existing models.Ranking
 		if err := database.DB.Where("username = ? AND id != ?", req.Username, id).First(&existing).Error; err == nil {
+			logger.Warn("更新排名用户名已存在", zap.String("username", req.Username))
 			c.JSON(http.StatusConflict, vo.ErrorResponse{Error: "username already exists"})
 			return
 		}
@@ -218,6 +229,7 @@ func (h *RankingHandler) UpdateRanking(c *gin.Context) {
 	}
 
 	if err := database.DB.Save(&ranking).Error; err != nil {
+		logger.Error("更新排名失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -254,12 +266,14 @@ func (h *RankingHandler) DeleteRanking(c *gin.Context) {
 
 	var ranking models.Ranking
 	if err := database.DB.First(&ranking, id).Error; err != nil {
+		logger.Warn("删除排名时未找到", zap.String("id", id))
 		c.JSON(http.StatusNotFound, vo.ErrorResponse{Error: "ranking not found"})
 		return
 	}
 
 	// 软删除
 	if err := database.DB.Delete(&ranking).Error; err != nil {
+		logger.Error("删除排名失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -318,6 +332,7 @@ func (h *RankingHandler) GetTopRankings(c *gin.Context) {
 	if err := database.DB.Order("score DESC, created_at ASC").
 		Limit(top).
 		Find(&rankings).Error; err != nil {
+		logger.Error("获取排行榜失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: err.Error()})
 		return
 	}

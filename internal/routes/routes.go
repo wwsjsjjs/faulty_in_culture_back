@@ -2,9 +2,12 @@ package routes
 
 import (
 	"faulty_in_culture/go_back/internal/handlers"
+	"faulty_in_culture/go_back/internal/logger"
+	"faulty_in_culture/go_back/internal/middleware"
 	ws "faulty_in_culture/go_back/internal/websocket"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -14,8 +17,7 @@ import (
 // 类型：Gin 路由注册函数
 // 功能：注册所有 API 路由、Swagger 文档路由和健康检查路由，将 HTTP 路径与对应的 handler 绑定。
 func SetupRoutes(router *gin.Engine, wsManager *ws.Manager) {
-	// 初始化限流器
-	handlers.InitLimiters()
+	logger.Info("routes.SetupRoutes: 开始设置路由")
 
 	// 创建处理器实例
 	// 创建排名业务处理器（Gin handler，业务逻辑层）
@@ -26,25 +28,25 @@ func SetupRoutes(router *gin.Engine, wsManager *ws.Manager) {
 	// API路由组
 	api := router.Group("/api")
 	{
-		// 用户相关路由（限流：5次/分钟）
-		api.POST("/register", handlers.LimiterGlobal, handlers.Register)
-		api.POST("/login", handlers.LimiterGlobal, handlers.Login)
+		// 用户相关路由（限流：60次/分钟）
+		api.POST("/register", middleware.LimiterGlobal, handlers.Register)
+		api.POST("/login", middleware.LimiterGlobal, handlers.Login)
 
 		// 消息相关路由（统一限流）
-		api.POST("/send-message", handlers.LimiterGlobal, handlers.SendMessage)
-		api.GET("/query-result", handlers.LimiterGlobal, handlers.QueryResult)
-		api.GET("/messages", handlers.LimiterGlobal, handlers.GetMessages)
+		api.POST("/send-message", middleware.LimiterGlobal, handlers.SendMessage)
+		api.GET("/query-result", middleware.LimiterGlobal, handlers.QueryResult)
+		api.GET("/messages", middleware.LimiterGlobal, handlers.GetMessages)
 
 		// 排名相关路由
 		rankings := api.Group("/rankings")
 		{
-			rankings.GET("", handlers.LimiterGlobal, rankingHandler.GetRankings)
-			rankings.GET("/top", handlers.LimiterGlobal, rankingHandler.GetTopRankings)
-			rankings.GET("/:id", handlers.LimiterGlobal, rankingHandler.GetRanking)
+			rankings.GET("", middleware.LimiterGlobal, rankingHandler.GetRankings)
+			rankings.GET("/top", middleware.LimiterGlobal, rankingHandler.GetTopRankings)
+			rankings.GET("/:id", middleware.LimiterGlobal, rankingHandler.GetRanking)
 
 			// 需要认证的接口（统一限流）
 			rankingsAuth := rankings.Group("")
-			rankingsAuth.Use(handlers.LimiterGlobal, handlers.AuthMiddleware())
+			rankingsAuth.Use(middleware.LimiterGlobal, middleware.AuthMiddleware())
 			rankingsAuth.POST("", rankingHandler.CreateRanking)
 			rankingsAuth.PUT("/:id", rankingHandler.UpdateRanking)
 			rankingsAuth.DELETE("/:id", rankingHandler.DeleteRanking)
@@ -52,7 +54,7 @@ func SetupRoutes(router *gin.Engine, wsManager *ws.Manager) {
 
 		// 存档相关路由（需要认证，统一限流）
 		savegames := api.Group("/savegames")
-		savegames.Use(handlers.LimiterGlobal, handlers.AuthMiddleware())
+		savegames.Use(middleware.LimiterGlobal, middleware.AuthMiddleware())
 		{
 			savegames.GET("", saveGameHandler.GetSaveGames)
 			savegames.GET("/:slot", saveGameHandler.GetSaveGame)
@@ -62,7 +64,7 @@ func SetupRoutes(router *gin.Engine, wsManager *ws.Manager) {
 
 		// AI聊天相关路由（需要认证，统一限流）
 		chat := api.Group("/chat")
-		chat.Use(handlers.LimiterGlobal, handlers.AuthMiddleware())
+		chat.Use(middleware.LimiterGlobal, middleware.AuthMiddleware())
 		{
 			chat.POST("/start", chatHandler.StartChat)
 			chat.POST("/send", chatHandler.SendMessage)
@@ -87,4 +89,9 @@ func SetupRoutes(router *gin.Engine, wsManager *ws.Manager) {
 			"message": "Ranking API is running",
 		})
 	})
+
+	logger.Info("routes.SetupRoutes: 路由设置完成",
+		zap.Int("total_handlers", 4),
+		zap.Strings("groups", []string{"user", "message", "ranking", "savegame", "chat"}),
+	)
 }

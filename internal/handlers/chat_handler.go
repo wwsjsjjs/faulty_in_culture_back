@@ -3,8 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"faulty_in_culture/go_back/internal/logger"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -12,14 +12,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"go.uber.org/zap"
 
 	"faulty_in_culture/go_back/internal/models"
 	"faulty_in_culture/go_back/internal/vo"
 
-	"github.com/yourusername/ranking-api/internal/cache"
-	"github.com/yourusername/ranking-api/internal/database"
-	"github.com/yourusername/ranking-api/internal/dto"
-	ws "github.com/yourusername/ranking-api/internal/websocket"
+	"faulty_in_culture/go_back/internal/cache"
+	"faulty_in_culture/go_back/internal/database"
+	"faulty_in_culture/go_back/internal/dto"
+	ws "faulty_in_culture/go_back/internal/websocket"
 )
 
 // ChatHandler AI聊天处理器
@@ -168,7 +169,7 @@ func (h *ChatHandler) callAIAndRespond(userID uint, sessionID uint, userContent 
 	)
 
 	if err != nil {
-		log.Printf("AI调用失败: %v", err)
+		logger.Warn("AI调用失败", zap.Error(err))
 		h.sendErrorToUser(userID, sessionID, "AI调用失败")
 		return
 	}
@@ -182,7 +183,7 @@ func (h *ChatHandler) callAIAndRespond(userID uint, sessionID uint, userContent 
 		Content:   aiResponse,
 	}
 	if err := database.DB.Create(&assistantMsg).Error; err != nil {
-		log.Printf("保存AI回复失败: %v", err)
+		logger.Warn("保存AI回复失败", zap.Error(err))
 	}
 
 	// 通过WebSocket推送给用户
@@ -202,7 +203,7 @@ func (h *ChatHandler) sendMessageToUser(userID uint, sessionID uint, content str
 	data, _ := json.Marshal(msg)
 
 	if err := h.wsManager.SendMessage(userIDStr, data); err != nil {
-		log.Printf("WebSocket推送失败: %v", err)
+		logger.Warn("WebSocket推送失败", zap.Error(err))
 	}
 }
 

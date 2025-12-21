@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"faulty_in_culture/go_back/internal/logger"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,6 +16,7 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
 		if token == "" {
+			logger.Warn("未登录或未提供 token", zap.String("ip", c.ClientIP()))
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录或未提供 token"})
 			c.Abort()
 			return
@@ -22,6 +26,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 实际应用中应使用 JWT 等更安全的方式
 		parts := strings.Split(token, ":")
 		if len(parts) < 2 {
+			logger.Warn("token 格式错误", zap.String("token", token))
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token 格式错误"})
 			c.Abort()
 			return
@@ -30,12 +35,14 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 提取用户ID
 		userID, err := strconv.ParseUint(parts[0], 10, 32)
 		if err != nil {
+			logger.Warn("token 中的用户ID无效", zap.String("token", token))
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token 中的用户ID无效"})
 			c.Abort()
 			return
 		}
 
 		// 将用户信息设置到上下文中
+		logger.Info("用户认证通过", zap.Uint("userID", uint(userID)), zap.String("username", parts[1]))
 		c.Set("user_id", uint(userID))
 		c.Set("username", parts[1])
 

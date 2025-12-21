@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"faulty_in_culture/go_back/internal/logger"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 
 	"faulty_in_culture/go_back/internal/cache"
 	"faulty_in_culture/go_back/internal/database"
@@ -35,6 +38,7 @@ func NewSaveGameHandler() *SaveGameHandler {
 func (h *SaveGameHandler) GetSaveGames(c *gin.Context) {
 	userID, exists := GetUserID(c)
 	if !exists {
+		logger.Warn("未授权访问存档列表", zap.String("ip", c.ClientIP()))
 		c.JSON(http.StatusUnauthorized, vo.ErrorResponse{Error: "未授权"})
 		return
 	}
@@ -55,6 +59,7 @@ func (h *SaveGameHandler) GetSaveGames(c *gin.Context) {
 
 	var saveGames []models.SaveGame
 	if err := database.DB.Where("user_id = ?", userID).Order("slot_number ASC").Find(&saveGames).Error; err != nil {
+		logger.Error("查询存档失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: "查询存档失败"})
 		return
 	}
@@ -93,12 +98,14 @@ func (h *SaveGameHandler) GetSaveGames(c *gin.Context) {
 func (h *SaveGameHandler) GetSaveGame(c *gin.Context) {
 	userID, exists := GetUserID(c)
 	if !exists {
+		logger.Warn("未授权访问单个存档", zap.String("ip", c.ClientIP()))
 		c.JSON(http.StatusUnauthorized, vo.ErrorResponse{Error: "未授权"})
 		return
 	}
 
 	slotNumber, err := strconv.Atoi(c.Param("slot"))
 	if err != nil || slotNumber < 1 || slotNumber > 6 {
+		logger.Warn("槽位号参数错误", zap.String("slot", c.Param("slot")))
 		c.JSON(http.StatusBadRequest, vo.ErrorResponse{Error: "槽位号必须在1-6之间"})
 		return
 	}
@@ -119,6 +126,7 @@ func (h *SaveGameHandler) GetSaveGame(c *gin.Context) {
 
 	var saveGame models.SaveGame
 	if err := database.DB.Where("user_id = ? AND slot_number = ?", userID, slotNumber).First(&saveGame).Error; err != nil {
+		logger.Warn("存档不存在", zap.Int("slot", slotNumber))
 		c.JSON(http.StatusNotFound, vo.ErrorResponse{Error: "存档不存在"})
 		return
 	}
@@ -156,18 +164,21 @@ func (h *SaveGameHandler) GetSaveGame(c *gin.Context) {
 func (h *SaveGameHandler) CreateOrUpdateSaveGame(c *gin.Context) {
 	userID, exists := GetUserID(c)
 	if !exists {
+		logger.Warn("未授权创建/更新存档", zap.String("ip", c.ClientIP()))
 		c.JSON(http.StatusUnauthorized, vo.ErrorResponse{Error: "未授权"})
 		return
 	}
 
 	slotNumber, err := strconv.Atoi(c.Param("slot"))
 	if err != nil || slotNumber < 1 || slotNumber > 6 {
+		logger.Warn("槽位号参数错误", zap.String("slot", c.Param("slot")))
 		c.JSON(http.StatusBadRequest, vo.ErrorResponse{Error: "槽位号必须在1-6之间"})
 		return
 	}
 
 	var req dto.SaveGameRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("存档参数错误", zap.Error(err))
 		c.JSON(http.StatusBadRequest, vo.ErrorResponse{Error: "参数错误"})
 		return
 	}
@@ -184,6 +195,7 @@ func (h *SaveGameHandler) CreateOrUpdateSaveGame(c *gin.Context) {
 			Data:       req.Data,
 		}
 		if err := database.DB.Create(&saveGame).Error; err != nil {
+			logger.Error("创建存档失败", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: "创建存档失败"})
 			return
 		}
@@ -191,6 +203,7 @@ func (h *SaveGameHandler) CreateOrUpdateSaveGame(c *gin.Context) {
 		// 已存在，更新
 		saveGame.Data = req.Data
 		if err := database.DB.Save(&saveGame).Error; err != nil {
+			logger.Error("更新存档失败", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: "更新存档失败"})
 			return
 		}
@@ -227,23 +240,27 @@ func (h *SaveGameHandler) CreateOrUpdateSaveGame(c *gin.Context) {
 func (h *SaveGameHandler) DeleteSaveGame(c *gin.Context) {
 	userID, exists := GetUserID(c)
 	if !exists {
+		logger.Warn("未授权删除存档", zap.String("ip", c.ClientIP()))
 		c.JSON(http.StatusUnauthorized, vo.ErrorResponse{Error: "未授权"})
 		return
 	}
 
 	slotNumber, err := strconv.Atoi(c.Param("slot"))
 	if err != nil || slotNumber < 1 || slotNumber > 6 {
+		logger.Warn("槽位号参数错误", zap.String("slot", c.Param("slot")))
 		c.JSON(http.StatusBadRequest, vo.ErrorResponse{Error: "槽位号必须在1-6之间"})
 		return
 	}
 
 	var saveGame models.SaveGame
 	if err := database.DB.Where("user_id = ? AND slot_number = ?", userID, slotNumber).First(&saveGame).Error; err != nil {
+		logger.Warn("删除存档时未找到", zap.Int("slot", slotNumber))
 		c.JSON(http.StatusNotFound, vo.ErrorResponse{Error: "存档不存在"})
 		return
 	}
 
 	if err := database.DB.Delete(&saveGame).Error; err != nil {
+		logger.Error("删除存档失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, vo.ErrorResponse{Error: "删除存档失败"})
 		return
 	}
