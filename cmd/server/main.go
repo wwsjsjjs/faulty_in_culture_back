@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
+
+	"faulty_in_culture/go_back/internal/cache"
+	"faulty_in_culture/go_back/internal/config"
+	"faulty_in_culture/go_back/internal/database"
+	"faulty_in_culture/go_back/internal/handlers"
+	"faulty_in_culture/go_back/internal/queue"
+	"faulty_in_culture/go_back/internal/routes"
+	"faulty_in_culture/go_back/internal/scheduler"
+	ws "faulty_in_culture/go_back/internal/websocket"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/ranking-api/internal/cache"
-	"github.com/yourusername/ranking-api/internal/config"
-	"github.com/yourusername/ranking-api/internal/database"
-	"github.com/yourusername/ranking-api/internal/handlers"
-	"github.com/yourusername/ranking-api/internal/queue"
-	"github.com/yourusername/ranking-api/internal/routes"
-	"github.com/yourusername/ranking-api/internal/scheduler"
-	ws "github.com/yourusername/ranking-api/internal/websocket"
 
-	_ "github.com/yourusername/ranking-api/docs" // 导入swagger文档
+	_ "faulty_in_culture/go_back/docs" // 导入swagger文档
 )
 
 // @title 排名系统API
@@ -38,7 +40,7 @@ func main() {
 	configPath := "config.yaml"
 	if _, err := os.Stat(configPath); err == nil {
 		// 存在 config.yaml
-		importConfig := "github.com/yourusername/ranking-api/internal/config"
+		importConfig := "faulty_in_culture/go_back/internal/config"
 		_ = importConfig // 避免未使用错误
 		config.LoadConfig(configPath)
 	} else {
@@ -60,6 +62,8 @@ func main() {
 
 	// 初始化 WebSocket 管理器
 	wsManager := ws.NewManager()
+	// 启动 WebSocket 心跳检测，10秒检测一次，30秒未活跃自动清理
+	wsManager.StartHeartbeat(10*time.Second, 30*time.Second)
 	handlers.InitMessageHandler(wsManager)
 
 	// 初始化消息队列（使用 Redis Streams）

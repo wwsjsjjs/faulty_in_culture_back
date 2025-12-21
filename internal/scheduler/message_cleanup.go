@@ -4,9 +4,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/yourusername/ranking-api/internal/config"
-	"github.com/yourusername/ranking-api/internal/database"
-	"github.com/yourusername/ranking-api/internal/models"
+	"faulty_in_culture/go_back/internal/config"
+	"faulty_in_culture/go_back/internal/database"
+	"faulty_in_culture/go_back/internal/models"
 )
 
 // StartMessageCleanupScheduler 启动定时清理过期消息的调度器

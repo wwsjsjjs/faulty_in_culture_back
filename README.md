@@ -20,27 +20,6 @@
 - **日志与监控**: ELK、Prometheus、Grafana（可选，日志采集、监控、可视化）
 - **分层结构**: handler、model、dto、vo、route、database 等分层清晰
 
-## 项目结构
-
-```
-go_back/
-├── cmd/
-│   └── server/
-│       └── main.go              # 程序入口
-├── internal/
-│   ├── models/
-│   │   └── ranking.go           # 数据模型定义
-│   ├── handlers/
-│   │   └── ranking_handler.go  # API处理器
-│   ├── database/
-│   │   └── db.go                # 数据库配置
-│   └── routes/
-│       └── routes.go            # 路由配置
-├── docs/                        # Swagger文档（自动生成）
-├── go.mod                       # Go模块依赖
-├── go.sum                       # 依赖校验
-└── README.md                    # 项目说明
-```
 
 ## 安装依赖
 
@@ -95,58 +74,6 @@ go build -o ranking-api.exe cmd/server/main.go
 ./ranking-api.exe
 ```
 
-## 主要接口方法
-
-### 用户相关
-- POST `/api/register` 用户注册
-- POST `/api/login` 用户登录
-
-### 排名相关
-- POST `/api/rankings` 创建新排名
-- GET `/api/rankings` 获取排名列表（分页）
-- GET `/api/rankings/{id}` 获取单个排名
-- PUT `/api/rankings/{id}` 更新排名
-- DELETE `/api/rankings/{id}` 删除排名
-- GET `/api/rankings/top` 获取排行榜前N名
-
-### 消息/异步任务相关
-- POST `/api/send-message` 发送延迟消息（10秒后返回）
-- GET `/api/query-result` 查询消息结果
-- GET `/api/messages` 获取历史消息列表（支持分页和状态筛选）
-- GET `/ws` WebSocket 实时消息推送
-
-### 存档相关 🆕（需要认证）
-- GET `/api/savegames` 获取用户所有存档
-- GET `/api/savegames/{slot}` 获取指定槽位存档（1-6）
-- PUT `/api/savegames/{slot}` 创建或更新存档
-- DELETE `/api/savegames/{slot}` 删除存档
-
-### AI聊天相关 🆕（需要认证）
-- POST `/api/chat/start` 开始新的AI聊天会话
-- POST `/api/chat/send` 发送消息给AI（异步，通过WebSocket返回）
-- GET `/api/chat/sessions` 获取所有聊天会话
-- GET `/api/chat/{session_id}` 获取聊天历史
-
-详细参数和返回格式请参考 [Swagger 文档](http://localhost:8080/swagger/index.html)。
-
-## 认证说明
-
-需要认证的接口需要在请求头中添加 `Authorization` token：
-```
-Authorization: {userID}:{username}:{timestamp}
-```
-
-示例：
-```bash
-# 登录获取token
-curl -X POST http://localhost:8080/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","password":"123456"}'
-
-# 使用token访问需要认证的接口
-curl -X GET http://localhost:8080/api/savegames \
-  -H "Authorization: 1:test:1703059200"
-```
 
 ## 环境变量
 

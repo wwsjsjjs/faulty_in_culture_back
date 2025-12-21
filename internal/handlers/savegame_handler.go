@@ -6,12 +6,13 @@ import (
 	"strconv"
 	"time"
 
+	"faulty_in_culture/go_back/internal/cache"
+	"faulty_in_culture/go_back/internal/database"
+	"faulty_in_culture/go_back/internal/dto"
+	"faulty_in_culture/go_back/internal/models"
+	"faulty_in_culture/go_back/internal/vo"
+
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/ranking-api/internal/cache"
-	"github.com/yourusername/ranking-api/internal/database"
-	"github.com/yourusername/ranking-api/internal/dto"
-	"github.com/yourusername/ranking-api/internal/models"
-	"github.com/yourusername/ranking-api/internal/vo"
 )
 
 // SaveGameHandler 存档处理器

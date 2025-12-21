@@ -8,11 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/yourusername/ranking-api/internal/cache"
-	"github.com/yourusername/ranking-api/internal/database"
-	"github.com/yourusername/ranking-api/internal/dto"
-	"github.com/yourusername/ranking-api/internal/models"
-	"github.com/yourusername/ranking-api/internal/vo"
+	"faulty_in_culture/go_back/internal/cache"
+	"faulty_in_culture/go_back/internal/database"
+	"faulty_in_culture/go_back/internal/dto"
+	"faulty_in_culture/go_back/internal/models"
+	"faulty_in_culture/go_back/internal/vo"
 )
 
 // Register 用户注册

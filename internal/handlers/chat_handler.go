@@ -13,11 +13,12 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 
+	"faulty_in_culture/go_back/internal/models"
+	"faulty_in_culture/go_back/internal/vo"
+
 	"github.com/yourusername/ranking-api/internal/cache"
 	"github.com/yourusername/ranking-api/internal/database"
 	"github.com/yourusername/ranking-api/internal/dto"
-	"github.com/yourusername/ranking-api/internal/models"
-	"github.com/yourusername/ranking-api/internal/vo"
 	ws "github.com/yourusername/ranking-api/internal/websocket"
 )
 

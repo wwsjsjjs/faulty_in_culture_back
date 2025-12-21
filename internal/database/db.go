@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yourusername/ranking-api/internal/config"
-	"github.com/yourusername/ranking-api/internal/models"
+	"faulty_in_culture/go_back/internal/config"
+	"faulty_in_culture/go_back/internal/models"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

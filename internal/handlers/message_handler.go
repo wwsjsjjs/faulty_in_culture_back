@@ -12,9 +12,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
-	"github.com/yourusername/ranking-api/internal/config"
-	"github.com/yourusername/ranking-api/internal/database"
-	"github.com/yourusername/ranking-api/internal/dto"
+	"faulty_in_culture/go_back/internal/config"
+	"faulty_in_culture/go_back/internal/database"
+	"faulty_in_culture/go_back/internal/dto"
+
 	"github.com/yourusername/ranking-api/internal/models"
 	"github.com/yourusername/ranking-api/internal/queue"
 	"github.com/yourusername/ranking-api/internal/vo"
@@ -133,16 +134,24 @@ func HandleWebSocket(c *gin.Context) {
 	wsManager.Register(userID, conn)
 	defer wsManager.Unregister(userID)
 
+	// 设置 PongHandler，收到 Pong 时更新活跃时间
+	conn.SetPongHandler(func(appData string) error {
+		wsManager.UpdateActiveTime(userID)
+		return nil
+	})
+
 	// 连接建立后，推送所有离线消息
 	go pushOfflineMessages(userID, conn)
 
-	// 保持连接，监听前端消息（可选）
+	// 保持连接，监听前端消息
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("读取消息失败:", err)
 			break
 		}
+		// 收到消息时也更新活跃时间
+		wsManager.UpdateActiveTime(userID)
 		log.Printf("收到来自用户 %s 的消息: %s", userID, string(message))
 	}
 }
