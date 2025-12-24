@@ -253,6 +253,7 @@ func UpdateUserScore(c *gin.Context) {
 
 	var req dto.UpdateScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("UpdateUserScore: 参数绑定失败", zap.Error(err))
 		c.JSON(http.StatusBadRequest, vo.ErrorResponse{Error: "参数错误"})
 		return
 	}

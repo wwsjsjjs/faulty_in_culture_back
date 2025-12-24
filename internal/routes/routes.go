@@ -24,6 +24,8 @@ func SetupRoutes(router *gin.Engine, wsManager *ws.Manager) {
 
 	api := router.Group("/api")
 	{
+		api.GET("/config", handlers.GetPublicConfig)
+
 		api.POST("/register", middleware.LimiterGlobal, handlers.Register)
 		api.POST("/login", middleware.LimiterGlobal, handlers.Login)
 

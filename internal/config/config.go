@@ -24,6 +24,10 @@ type RedisConfig struct {
 	DB       int    `yaml:"db"`
 }
 
+type ServerConfig struct {
+	PublicBaseURL string `yaml:"public_base_url"`
+}
+
 type MessageConfig struct {
 	DelaySeconds        int `yaml:"delay_seconds"`         // 消息延迟处理时间（秒）
 	CleanupDays         int `yaml:"cleanup_days"`          // 清理多少天前的已完成消息
@@ -35,6 +39,7 @@ type Config struct {
 	Database DBConfig      `yaml:"database"`
 	Redis    RedisConfig   `yaml:"redis"`
 	Message  MessageConfig `yaml:"message"`
+	Server   ServerConfig  `yaml:"server"`
 }
 
 var AppConfig Config

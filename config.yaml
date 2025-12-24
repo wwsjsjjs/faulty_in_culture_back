@@ -6,6 +6,9 @@ database:
   name: culture
   charset: utf8mb4
 
+server:
+  public_base_url: "http://localhost:8080/api"
+
 redis:
   host: 127.0.0.1
   port: 6379

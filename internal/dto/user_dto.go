@@ -17,5 +17,5 @@ type UserResponse struct {
 }
 
 type UpdateScoreRequest struct {
-	Score int `json:"score" binding:"required,min=0"`
+	Score int `json:"score" binding:"min=0"`
 }
