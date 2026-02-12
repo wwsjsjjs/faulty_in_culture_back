@@ -1,26 +1,15 @@
 {
-    "schemes": [
-        "http"
-    ],
     "swagger": "2.0",
     "info": {
-        "description": "这是一个用户管理系统的API文档。",
-        "title": "faulty_in_culture 管理系统",
-        "termsOfService": "http://swagger.io/terms/",
+        "title": "faulty_in_culture API",
         "contact": {},
         "version": "1.0"
     },
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
-        "/api/chat/send": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "向指定会话发送消息，异步调用AI并通过WebSocket返回",
+        "/api/chat/history": {
+            "get": {
                 "consumes": [
                     "application/json"
                 ],
@@ -28,136 +17,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "chat"
-                ],
-                "summary": "发送消息给AI",
-                "parameters": [
-                    {
-                        "description": "消息内容",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.ChatMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/sessions": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "获取当前用户的所有聊天会话列表",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "获取用户所有聊天会话",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/vo.ChatSessionResponse"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/start": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "创建一个新的AI聊天会话",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "开始新的聊天会话",
-                "parameters": [
-                    {
-                        "description": "聊天标题",
-                        "name": "data",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ChatStartRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ChatSessionResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/{session_id}": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "获取指定会话的聊天历史",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
+                    "聊天"
                 ],
                 "summary": "获取聊天历史",
                 "parameters": [
@@ -165,27 +25,224 @@
                         "type": "integer",
                         "description": "会话ID",
                         "name": "session_id",
-                        "in": "path",
+                        "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "偏移量",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "每页数量",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/vo.ChatHistoryResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/chat.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chat.HistoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
+                    }
+                }
+            }
+        },
+        "/api/chat/recall": {
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "撤回消息",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "会话ID",
+                        "name": "session_id",
+                        "in": "query",
+                        "required": true
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    {
+                        "description": "消息ID列表",
+                        "name": "message_ids",
+                        "in": "body",
+                        "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
                         }
-                    },
-                    "404": {
-                        "description": "Not Found",
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "$ref": "#/definitions/chat.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chat/send": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "发送消息",
+                "parameters": [
+                    {
+                        "description": "请求体",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.SendMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/chat.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chat.MessageVO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chat/sessions": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "获取会话列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "偏移量",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "每页数量",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/chat.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/chat.SessionVO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chat/start": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "开始新对话",
+                "parameters": [
+                    {
+                        "description": "请求体",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.StartRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/chat.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chat.SessionVO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -193,7 +250,7 @@
         },
         "/api/login": {
             "post": {
-                "description": "用户登录，传入用户名和密码",
+                "description": "用户通过用户名和密码登录，返回token用于后续认证",
                 "consumes": [
                     "application/json"
                 ],
@@ -211,126 +268,35 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UserLoginRequest"
+                            "$ref": "#/definitions/user.LoginRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "登录成功，返回token和用户信息",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/user.LoginResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "参数错误",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/user.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "用户名或密码错误",
+                        "schema": {
+                            "$ref": "#/definitions/user.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/api/messages": {
+        "/api/rankings/{rank_type}": {
             "get": {
-                "description": "获取指定用户的历史消息记录，支持分页和状态筛选",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "message"
-                ],
-                "summary": "获取历史消息列表",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "用户ID",
-                        "name": "user_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "页码",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 10,
-                        "description": "每页数量",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "pending",
-                            "completed",
-                            "failed"
-                        ],
-                        "type": "string",
-                        "description": "状态筛选",
-                        "name": "status",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/vo.MessageListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/query-result": {
-            "get": {
-                "description": "根据任务ID查询延迟消息结果",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "message"
-                ],
-                "summary": "查询消息结果",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "任务ID",
-                        "name": "task_id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/rankings": {
-            "get": {
-                "description": "获取用户排行榜，按分数降序排列",
+                "description": "获取指定类型的用户排行榜，按分数降序排列，支持分页查询",
                 "produces": [
                     "application/json"
                 ],
@@ -341,33 +307,41 @@
                 "parameters": [
                     {
                         "type": "integer",
-                        "default": 1,
-                        "description": "页码",
+                        "description": "排行榜类型(1-9)",
+                        "name": "rank_type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码，默认为1",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "default": 10,
-                        "description": "每页数量",
+                        "description": "每页数量，默认为10，最大100",
                         "name": "limit",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "排行榜数据",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/vo.RankingResponse"
-                            }
+                            "$ref": "#/definitions/user.RankingListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "排行榜类型无效",
+                        "schema": {
+                            "$ref": "#/definitions/user.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "服务器错误",
                         "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "$ref": "#/definitions/user.ErrorResponse"
                         }
                     }
                 }
@@ -375,7 +349,7 @@
         },
         "/api/register": {
             "post": {
-                "description": "用户注册，传入用户名和密码",
+                "description": "用户通过用户名和密码注册新账号，密码将被加密存储",
                 "consumes": [
                     "application/json"
                 ],
@@ -393,84 +367,49 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UserRegisterRequest"
+                            "$ref": "#/definitions/user.RegisterRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "注册成功，返回用户信息和token",
                         "schema": {
-                            "$ref": "#/definitions/vo.UserVO"
+                            "$ref": "#/definitions/user.RegisterResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "参数错误或用户名已存在",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/savegames": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "获取当前用户的所有存档（最多6个）",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "savegame"
-                ],
-                "summary": "获取用户所有存档",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/vo.SaveGameResponse"
-                            }
+                            "$ref": "#/definitions/user.ErrorResponse"
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "500": {
+                        "description": "服务器错误",
                         "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "$ref": "#/definitions/user.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/api/savegames/{slot}": {
+        "/api/savegame": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "获取当前用户指定槽位的存档",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "savegame"
+                    "存档"
                 ],
-                "summary": "获取指定槽位的存档",
+                "summary": "查询存档",
                 "parameters": [
                     {
+                        "maximum": 6,
+                        "minimum": 1,
                         "type": "integer",
-                        "description": "存档槽位(1-6)",
-                        "name": "slot",
-                        "in": "path",
+                        "description": "槽位号(1-6)",
+                        "name": "slot_number",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -478,30 +417,24 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/vo.SaveGameResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/savegame.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/savegame.SaveGameVO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
             },
-            "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "在指定槽位创建或更新存档",
+            "post": {
                 "consumes": [
                     "application/json"
                 ],
@@ -509,24 +442,17 @@
                     "application/json"
                 ],
                 "tags": [
-                    "savegame"
+                    "存档"
                 ],
                 "summary": "创建或更新存档",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "存档槽位(1-6)",
-                        "name": "slot",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
                         "description": "存档数据",
-                        "name": "data",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.SaveGameRequest"
+                            "$ref": "#/definitions/savegame.CreateRequest"
                         }
                     }
                 ],
@@ -534,43 +460,39 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/vo.SaveGameResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/savegame.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/savegame.SaveGameVO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
             },
             "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "删除指定槽位的存档",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "savegame"
+                    "存档"
                 ],
                 "summary": "删除存档",
                 "parameters": [
                     {
+                        "maximum": 6,
+                        "minimum": 1,
                         "type": "integer",
-                        "description": "存档槽位(1-6)",
-                        "name": "slot",
-                        "in": "path",
+                        "description": "槽位号(1-6)",
+                        "name": "slot_number",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -578,56 +500,38 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/vo.SuccessMessageResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "$ref": "#/definitions/savegame.Response"
                         }
                     }
                 }
             }
         },
-        "/api/send-message": {
-            "post": {
-                "description": "发送一段消息，配置时间后返回",
-                "consumes": [
-                    "application/json"
-                ],
+        "/api/savegame/all": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "message"
+                    "存档"
                 ],
-                "summary": "发送延迟消息",
-                "parameters": [
-                    {
-                        "description": "消息内容",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.SendMessageRequest"
-                        }
-                    }
-                ],
+                "summary": "查询所有存档",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/savegame.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/savegame.SaveGameListResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -640,7 +544,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "更新当前用户的分数",
+                "description": "更新当前登录用户的指定排行榜分数，分数更新后排行榜缓存将被清除",
                 "consumes": [
                     "application/json"
                 ],
@@ -658,61 +562,93 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateScoreRequest"
+                            "$ref": "#/definitions/user.UpdateScoreRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "更新成功",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/user.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "参数错误",
                         "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "$ref": "#/definitions/user.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "未授权",
                         "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "$ref": "#/definitions/user.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "500": {
+                        "description": "服务器错误",
                         "schema": {
-                            "$ref": "#/definitions/vo.ErrorResponse"
+                            "$ref": "#/definitions/user.ErrorResponse"
                         }
                     }
                 }
             }
-        },
-        "/ws": {
-            "get": {
-                "description": "建立 WebSocket 连接，接收实时消息推送",
-                "tags": [
-                    "message"
-                ],
-                "summary": "WebSocket 连接",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "用户ID",
-                        "name": "user_id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {}
-            }
         }
     },
     "definitions": {
-        "dto.ChatMessageRequest": {
+        "chat.HistoryResponse": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.MessageVO"
+                    }
+                },
+                "session": {
+                    "$ref": "#/definitions/chat.SessionVO"
+                }
+            }
+        },
+        "chat.MessageVO": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "example": "你好"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-12-20T10:00:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "message_index": {
+                    "description": "1=用户, 2=AI, 3=用户...",
+                    "type": "integer",
+                    "example": 1
+                },
+                "session_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "chat.Response": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {},
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.SendMessageRequest": {
             "type": "object",
             "required": [
                 "content",
@@ -720,270 +656,268 @@
             ],
             "properties": {
                 "content": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "你好"
                 },
                 "session_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
-        "dto.ChatStartRequest": {
+        "chat.SessionVO": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-12-20T10:00:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "title": {
+                    "type": "string",
+                    "example": "我的对话"
+                },
+                "type": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "user_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "chat.StartRequest": {
             "type": "object",
             "properties": {
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "新对话"
                 }
             }
         },
-        "dto.SaveGameRequest": {
+        "savegame.CreateRequest": {
             "type": "object",
             "required": [
-                "game_data"
+                "game_data",
+                "slot_number"
             ],
             "properties": {
                 "game_data": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.SendMessageRequest": {
-            "type": "object",
-            "required": [
-                "message",
-                "user_id"
-            ],
-            "properties": {
-                "message": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "{\"level\":5}"
                 },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "dto.UpdateScoreRequest": {
-            "type": "object",
-            "required": [
-                "score"
-            ],
-            "properties": {
-                "score": {
+                "slot_number": {
                     "type": "integer",
-                    "minimum": 0
+                    "maximum": 6,
+                    "minimum": 1,
+                    "example": 1
                 }
             }
         },
-        "dto.UserLoginRequest": {
+        "savegame.Response": {
             "type": "object",
-            "required": [
-                "password",
-                "username"
-            ],
             "properties": {
-                "password": {
-                    "type": "string"
+                "code": {
+                    "type": "integer"
                 },
-                "username": {
+                "data": {},
+                "msg": {
                     "type": "string"
                 }
             }
         },
-        "dto.UserRegisterRequest": {
-            "type": "object",
-            "required": [
-                "password",
-                "username"
-            ],
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "vo.ChatHistoryResponse": {
+        "savegame.SaveGameListResponse": {
             "type": "object",
             "properties": {
-                "messages": {
+                "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vo.ChatMessageResponse"
+                        "$ref": "#/definitions/savegame.SaveGameVO"
                     }
                 },
-                "session": {
-                    "$ref": "#/definitions/vo.ChatSessionResponse"
+                "total": {
+                    "type": "integer",
+                    "example": 3
                 }
             }
         },
-        "vo.ChatMessageResponse": {
+        "savegame.SaveGameVO": {
             "type": "object",
             "properties": {
-                "content": {
-                    "type": "string"
+                "game_data": {
+                    "type": "string",
+                    "example": "{\"level\":5}"
                 },
-                "created_at": {
-                    "type": "string"
+                "saved_at": {
+                    "type": "string",
+                    "example": "2023-12-20T10:00:00Z"
                 },
-                "id": {
-                    "type": "integer"
-                },
-                "role": {
-                    "type": "integer"
-                },
-                "session_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "vo.ChatSessionResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "integer"
+                "slot_number": {
+                    "type": "integer",
+                    "example": 1
                 },
                 "user_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
-        "vo.ErrorResponse": {
+        "user.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "description": "Error 错误信息",
                     "type": "string",
                     "example": "invalid request"
                 }
             }
         },
-        "vo.MessageListResponse": {
+        "user.LoginRequest": {
             "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
             "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/vo.MessageResponse"
-                    }
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "vo.MessageResponse": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "status": {
-                    "type": "integer"
-                },
-                "task_id": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "vo.RankingResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "description": "CreatedAt 创建时间",
+                "password": {
                     "type": "string",
-                    "format": "date-time",
-                    "example": "2023-12-20T10:00:00Z"
-                },
-                "id": {
-                    "description": "ID 排名ID",
-                    "type": "integer",
-                    "example": 1
-                },
-                "rank": {
-                    "description": "Rank 排名",
-                    "type": "integer",
-                    "example": 1
-                },
-                "score": {
-                    "description": "Score 分数",
-                    "type": "integer",
-                    "example": 1000
-                },
-                "updated_at": {
-                    "description": "UpdatedAt 更新时间",
-                    "type": "string",
-                    "format": "date-time",
-                    "example": "2023-12-20T10:00:00Z"
+                    "example": "password123"
                 },
                 "username": {
-                    "description": "Username 用户名",
                     "type": "string",
                     "example": "player1"
                 }
             }
         },
-        "vo.SaveGameResponse": {
+        "user.LoginResponse": {
             "type": "object",
             "properties": {
-                "game_data": {
-                    "type": "string"
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 },
-                "saved_at": {
-                    "type": "string"
-                },
-                "slot_number": {
-                    "type": "integer"
-                },
-                "user_id": {
-                    "type": "integer"
+                "user": {
+                    "$ref": "#/definitions/user.UserVO"
                 }
             }
         },
-        "vo.SuccessMessageResponse": {
+        "user.RankingItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "rank": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "score": {
+                    "type": "integer",
+                    "example": 1000
+                },
+                "username": {
+                    "type": "string",
+                    "example": "player1"
+                }
+            }
+        },
+        "user.RankingListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "rankings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/user.RankingItem"
+                    }
+                }
+            }
+        },
+        "user.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "password123"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "player1"
+                }
+            }
+        },
+        "user.RegisterResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
+                "username": {
+                    "type": "string",
+                    "example": "player1"
+                }
+            }
+        },
+        "user.SuccessResponse": {
             "type": "object",
             "properties": {
                 "message": {
-                    "description": "Message 消息内容",
                     "type": "string",
                     "example": "success"
                 }
             }
         },
-        "vo.UserVO": {
+        "user.UpdateScoreRequest": {
+            "type": "object",
+            "required": [
+                "rank_type"
+            ],
+            "properties": {
+                "rank_type": {
+                    "description": "排行榜类型1-9",
+                    "type": "integer",
+                    "maximum": 9,
+                    "minimum": 1,
+                    "example": 1
+                },
+                "score": {
+                    "description": "分数",
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 100
+                }
+            }
+        },
+        "user.UserVO": {
             "type": "object",
             "properties": {
                 "id": {
-                    "description": "ID 用户ID",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "username": {
-                    "description": "Username 用户名",
-                    "type": "string"
+                    "type": "string",
+                    "example": "player1"
                 }
             }
         }

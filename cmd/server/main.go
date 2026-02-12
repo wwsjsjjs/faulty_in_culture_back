@@ -5,153 +5,131 @@ import (
 	"os"
 	"time"
 
-	"faulty_in_culture/go_back/internal/cache"
-	"faulty_in_culture/go_back/internal/config"
-	"faulty_in_culture/go_back/internal/database"
-	"faulty_in_culture/go_back/internal/handlers"
-	"faulty_in_culture/go_back/internal/logger"
-	"faulty_in_culture/go_back/internal/middleware"
-	"faulty_in_culture/go_back/internal/queue"
+	"faulty_in_culture/go_back/internal/chat"
 	"faulty_in_culture/go_back/internal/routes"
-	"faulty_in_culture/go_back/internal/scheduler"
-	ws "faulty_in_culture/go_back/internal/websocket"
+	"faulty_in_culture/go_back/internal/savegame"
+	"faulty_in_culture/go_back/internal/shared/infra/cache"
+	"faulty_in_culture/go_back/internal/shared/infra/config"
+	"faulty_in_culture/go_back/internal/shared/infra/db"
+	"faulty_in_culture/go_back/internal/shared/infra/logger"
+	"faulty_in_culture/go_back/internal/shared/infra/ws"
+	"faulty_in_culture/go_back/internal/shared/middleware"
+	"faulty_in_culture/go_back/internal/user"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
 	"go.uber.org/zap"
 
-	_ "faulty_in_culture/go_back/docs" // 导入swagger文档
+	_ "faulty_in_culture/go_back/docs"
 )
 
-// @title faulty_in_culture 管理系统
+// @title faulty_in_culture API
 // @version 1.0
-// @description 这是一个用户管理系统的API文档。
-// @termsOfService http://swagger.io/terms/
-
 // @host localhost:8080
 // @BasePath /
-// @schemes http
 func main() {
-	// 初始化日志系统（开发模式输出到终端）
-	logMode := os.Getenv("LOG_MODE")
-	if logMode == "" {
-		logMode = "dev" // 默认开发模式
-	}
+	// 初始化日志
+	logMode := getEnv("LOG_MODE", "dev")
 	if err := logger.InitLogger(logMode); err != nil {
-		logger.Error("main: 初始化 logger 失败", zap.Error(err))
+		fmt.Printf("初始化日志失败: %v\n", err)
 		os.Exit(1)
 	}
 	defer logger.Sync()
 
-	logger.Info("main: 应用程序启动")
+	logger.Info("应用启动（简化MVC架构）")
 
 	// 加载配置
-	configPath := "config.yaml"
-	if _, err := os.Stat(configPath); err == nil {
-		logger.Info("main: 加载配置文件", zap.String("path", configPath))
-		config.LoadConfig(configPath)
-	} else {
-		logger.Error("main: 配置文件不存在", zap.String("path", configPath), zap.Error(err))
+	config.LoadConfig("config.yaml")
+
+	// 初始化共享基础设施（会自动检查连接）
+	if err := db.InitDatabase(); err != nil {
+		logger.Error("数据库初始化失败", zap.Error(err))
 		os.Exit(1)
 	}
 
-	// 初始化数据库
-	logger.Info("main: 初始化数据库")
-	if err := database.InitDatabase(); err != nil {
-		logger.Error("main: 数据库初始化失败", zap.Error(err))
-		os.Exit(1)
-	}
-	logger.Info("main: 数据库初始化成功")
+	// 获取配置
+	cfg := config.AppConfig
+	redisAddr := fmt.Sprintf("%s:%d", cfg.Redis.Host, cfg.Redis.Port)
 
-	// 初始化 Redis 缓存
-	logger.Info("main: 初始化 Redis 缓存")
 	if err := cache.InitCache(); err != nil {
-		logger.Warn("main: Redis 缓存初始化失败，服务将继续运行但无缓存功能", zap.Error(err))
-	} else {
-		logger.Info("main: Redis 缓存初始化成功")
+		logger.Warn("Redis缓存初始化失败", zap.Error(err))
 	}
 
-	// 初始化限流器
-	redisConf := config.AppConfig.Redis
-	redisAddr := fmt.Sprintf("%s:%d", redisConf.Host, redisConf.Port)
-	logger.Info("main: 初始化限流器", zap.String("redisAddr", redisAddr))
-	if err := middleware.InitLimiters(redisAddr, redisConf.Password, redisConf.DB); err != nil {
-		logger.Error("main: 限流器初始化失败", zap.Error(err))
+	if err := middleware.InitLimiters(redisAddr, cfg.Redis.Password, cfg.Redis.DB); err != nil {
+		logger.Error("限流器初始化失败", zap.Error(err))
 		os.Exit(1)
 	}
 
-	// 初始化 WebSocket 管理器
-	logger.Info("main: 初始化 WebSocket 管理器")
+	// WebSocket管理器
 	wsManager := ws.NewManager()
-	// 启动 WebSocket 心跳检测，10秒检测一次，30秒未活跃自动清理
 	wsManager.StartHeartbeat(10*time.Second, 30*time.Second)
-	handlers.InitMessageHandler(wsManager)
-	logger.Info("main: WebSocket 管理器初始化成功")
 
-	// 初始化消息队列（使用 Redis Streams）
-	logger.Info("main: 初始化消息队列")
-	if err := queue.InitQueue(redisAddr, redisConf.Password, redisConf.DB); err != nil {
-		logger.Error("main: 消息队列初始化失败", zap.Error(err))
-		os.Exit(1)
+	// ============================================================
+	// 依赖注入 - 构建各领域模块（简化MVC）
+	// 架构层次：Entity -> Repository -> Service -> Handler
+	// ============================================================
+
+	// 获取数据库连接
+	database := db.GetDB()
+
+	// User模块（完整依赖注入示例）
+	_ = user.NewRepository(database) // TODO: 实现完整依赖注入
+	// userService := user.NewService(userRepo, passwordHasher, tokenGen, cacheImpl)
+	// userHandler := user.NewHandler(userService)
+
+	// Chat模块
+	_ = chat.NewRepository(database) // TODO: 实现完整依赖注入
+	// chatService := chat.NewService(chatRepo, aiClient, wsManager, cacheImpl)
+	// chatHandler := chat.NewHandler(chatService)
+
+	// SaveGame模块
+	saveGameRepo := savegame.NewRepository(database)
+	saveGameService := savegame.NewService(saveGameRepo)
+	saveGameHandler := savegame.NewHandler(saveGameService)
+
+	// 临时：使用占位符（待实现完整的依赖注入）
+	handlers := &routes.Handlers{
+		// User:     userHandler,
+		// Chat:     chatHandler,
+		SaveGame: saveGameHandler,
 	}
-	defer queue.Shutdown()
-	logger.Info("main: 消息队列初始化成功")
 
-	// 启动 Redis Streams worker
-	logger.Info("main: 启动消息队列 worker")
-	queue.StartWorker(handlers.ProcessDelayedMessage)
-
-	// 启动定时清理任务
-	logger.Info("main: 启动定时清理任务")
-	scheduler.StartMessageCleanupScheduler()
-
-	// 设置Gin模式（开发环境使用debug，生产环境使用release）
-	mode := os.Getenv("GIN_MODE")
-	if mode == "" {
-		mode = gin.DebugMode
-	}
-	gin.SetMode(mode)
-	logger.Info("main: 设置 Gin 模式", zap.String("mode", mode))
-
-	// 创建Gin路由器
+	// 启动HTTP服务
+	gin.SetMode(getEnv("GIN_MODE", gin.DebugMode))
 	router := gin.Default()
-
-	// 配置CORS（允许跨域请求）
 	router.Use(corsMiddleware())
 
-	// 设置路由（传递 wsManager）
-	logger.Info("main: 设置路由")
-	routes.SetupRoutes(router, wsManager)
+	// 设置路由（传入handlers）
+	routes.SetupRoutes(router, handlers)
 
-	// 获取端口
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	// 启动服务器
-	logger.Info("main: 启动服务器", zap.String("port", port))
-	logger.Info("main: Swagger 文档地址", zap.String("swagger", fmt.Sprintf("http://localhost:%s/swagger/index.html", port)))
-	logger.Info("main: 健康检查地址", zap.String("health", fmt.Sprintf("http://localhost:%s/health", port)))
+	port := getEnv("PORT", "8080")
+	logger.Info("服务启动（简化MVC）",
+		zap.String("port", port),
+		zap.String("swagger", fmt.Sprintf("http://localhost:%s/swagger/index.html", port)),
+		zap.Strings("modules", []string{"user", "chat", "savegame"}))
 
 	if err := router.Run(":" + port); err != nil {
-		logger.Error("main: 服务器启动失败", zap.Error(err))
+		logger.Error("服务启动失败", zap.Error(err))
 		os.Exit(1)
 	}
 }
 
-// corsMiddleware CORS中间件
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
 		}
-
 		c.Next()
 	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

@@ -1,207 +1,258 @@
 basePath: /
 definitions:
-  dto.ChatMessageRequest:
+  chat.HistoryResponse:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/chat.MessageVO'
+        type: array
+      session:
+        $ref: '#/definitions/chat.SessionVO'
+    type: object
+  chat.MessageVO:
     properties:
       content:
+        example: 你好
+        type: string
+      created_at:
+        example: "2023-12-20T10:00:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      message_index:
+        description: 1=用户, 2=AI, 3=用户...
+        example: 1
+        type: integer
+      session_id:
+        example: 1
+        type: integer
+    type: object
+  chat.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      msg:
+        type: string
+    type: object
+  chat.SendMessageRequest:
+    properties:
+      content:
+        example: 你好
         type: string
       session_id:
+        example: 1
         type: integer
     required:
     - content
     - session_id
     type: object
-  dto.ChatStartRequest:
-    properties:
-      title:
-        type: string
-    type: object
-  dto.SaveGameRequest:
-    properties:
-      game_data:
-        type: string
-    required:
-    - game_data
-    type: object
-  dto.SendMessageRequest:
-    properties:
-      message:
-        type: string
-      user_id:
-        type: integer
-    required:
-    - message
-    - user_id
-    type: object
-  dto.UpdateScoreRequest:
-    properties:
-      score:
-        minimum: 0
-        type: integer
-    required:
-    - score
-    type: object
-  dto.UserLoginRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    required:
-    - password
-    - username
-    type: object
-  dto.UserRegisterRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    required:
-    - password
-    - username
-    type: object
-  vo.ChatHistoryResponse:
-    properties:
-      messages:
-        items:
-          $ref: '#/definitions/vo.ChatMessageResponse'
-        type: array
-      session:
-        $ref: '#/definitions/vo.ChatSessionResponse'
-    type: object
-  vo.ChatMessageResponse:
-    properties:
-      content:
-        type: string
-      created_at:
-        type: string
-      id:
-        type: integer
-      role:
-        type: integer
-      session_id:
-        type: integer
-    type: object
-  vo.ChatSessionResponse:
+  chat.SessionVO:
     properties:
       created_at:
+        example: "2023-12-20T10:00:00Z"
         type: string
       id:
+        example: 1
         type: integer
       title:
+        example: 我的对话
         type: string
       type:
+        example: 1
         type: integer
       user_id:
+        example: 1
         type: integer
     type: object
-  vo.ErrorResponse:
+  chat.StartRequest:
+    properties:
+      title:
+        example: 新对话
+        type: string
+    type: object
+  savegame.CreateRequest:
+    properties:
+      game_data:
+        example: '{"level":5}'
+        type: string
+      slot_number:
+        example: 1
+        maximum: 6
+        minimum: 1
+        type: integer
+    required:
+    - game_data
+    - slot_number
+    type: object
+  savegame.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      msg:
+        type: string
+    type: object
+  savegame.SaveGameListResponse:
+    properties:
+      list:
+        items:
+          $ref: '#/definitions/savegame.SaveGameVO'
+        type: array
+      total:
+        example: 3
+        type: integer
+    type: object
+  savegame.SaveGameVO:
+    properties:
+      game_data:
+        example: '{"level":5}'
+        type: string
+      saved_at:
+        example: "2023-12-20T10:00:00Z"
+        type: string
+      slot_number:
+        example: 1
+        type: integer
+      user_id:
+        example: 1
+        type: integer
+    type: object
+  user.ErrorResponse:
     properties:
       error:
-        description: Error 错误信息
         example: invalid request
         type: string
     type: object
-  vo.MessageListResponse:
+  user.LoginRequest:
     properties:
-      limit:
-        type: integer
-      messages:
-        items:
-          $ref: '#/definitions/vo.MessageResponse'
-        type: array
-      page:
-        type: integer
-      total:
-        type: integer
+      password:
+        example: password123
+        type: string
+      username:
+        example: player1
+        type: string
+    required:
+    - password
+    - username
     type: object
-  vo.MessageResponse:
+  user.LoginResponse:
     properties:
-      content:
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
-      created_at:
-        type: string
-      id:
-        type: integer
-      status:
-        type: integer
-      task_id:
-        type: string
-      user_id:
-        type: integer
+      user:
+        $ref: '#/definitions/user.UserVO'
     type: object
-  vo.RankingResponse:
+  user.RankingItem:
     properties:
-      created_at:
-        description: CreatedAt 创建时间
-        example: "2023-12-20T10:00:00Z"
-        format: date-time
-        type: string
       id:
-        description: ID 排名ID
         example: 1
         type: integer
       rank:
-        description: Rank 排名
         example: 1
         type: integer
       score:
-        description: Score 分数
         example: 1000
         type: integer
-      updated_at:
-        description: UpdatedAt 更新时间
-        example: "2023-12-20T10:00:00Z"
-        format: date-time
-        type: string
       username:
-        description: Username 用户名
         example: player1
         type: string
     type: object
-  vo.SaveGameResponse:
+  user.RankingListResponse:
     properties:
-      game_data:
-        type: string
-      saved_at:
-        type: string
-      slot_number:
+      limit:
+        example: 10
         type: integer
-      user_id:
+      page:
+        example: 1
         type: integer
+      rankings:
+        items:
+          $ref: '#/definitions/user.RankingItem'
+        type: array
     type: object
-  vo.SuccessMessageResponse:
+  user.RegisterRequest:
+    properties:
+      password:
+        example: password123
+        type: string
+      username:
+        example: player1
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  user.RegisterResponse:
+    properties:
+      id:
+        example: 1
+        type: integer
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      username:
+        example: player1
+        type: string
+    type: object
+  user.SuccessResponse:
     properties:
       message:
-        description: Message 消息内容
         example: success
         type: string
     type: object
-  vo.UserVO:
+  user.UpdateScoreRequest:
+    properties:
+      rank_type:
+        description: 排行榜类型1-9
+        example: 1
+        maximum: 9
+        minimum: 1
+        type: integer
+      score:
+        description: 分数
+        example: 100
+        minimum: 0
+        type: integer
+    required:
+    - rank_type
+    type: object
+  user.UserVO:
     properties:
       id:
-        description: ID 用户ID
+        example: 1
         type: integer
       username:
-        description: Username 用户名
+        example: player1
         type: string
     type: object
 host: localhost:8080
 info:
   contact: {}
-  description: 这是一个用户管理系统的API文档。
-  termsOfService: http://swagger.io/terms/
-  title: faulty_in_culture 管理系统
+  title: faulty_in_culture API
   version: "1.0"
 paths:
-  /api/chat/{session_id}:
+  /api/chat/history:
     get:
-      description: 获取指定会话的聊天历史
+      consumes:
+      - application/json
       parameters:
       - description: 会话ID
-        in: path
+        in: query
         name: session_id
         required: true
+        type: integer
+      - default: 0
+        description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      - default: 50
+        description: 每页数量
+        in: query
+        name: limit
         type: integer
       produces:
       - application/json
@@ -209,221 +260,187 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/vo.ChatHistoryResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
+            allOf:
+            - $ref: '#/definitions/chat.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/chat.HistoryResponse'
+              type: object
       summary: 获取聊天历史
       tags:
-      - chat
+      - 聊天
+  /api/chat/recall:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 会话ID
+        in: query
+        name: session_id
+        required: true
+        type: integer
+      - description: 消息ID列表
+        in: body
+        name: message_ids
+        required: true
+        schema:
+          items:
+            type: integer
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/chat.Response'
+      summary: 撤回消息
+      tags:
+      - 聊天
   /api/chat/send:
     post:
       consumes:
       - application/json
-      description: 向指定会话发送消息，异步调用AI并通过WebSocket返回
       parameters:
-      - description: 消息内容
+      - description: 请求体
         in: body
-        name: data
+        name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.ChatMessageRequest'
+          $ref: '#/definitions/chat.SendMessageRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: 发送消息给AI
+            allOf:
+            - $ref: '#/definitions/chat.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/chat.MessageVO'
+              type: object
+      summary: 发送消息
       tags:
-      - chat
+      - 聊天
   /api/chat/sessions:
     get:
-      description: 获取当前用户的所有聊天会话列表
+      parameters:
+      - default: 0
+        description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/vo.ChatSessionResponse'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: 获取用户所有聊天会话
+            allOf:
+            - $ref: '#/definitions/chat.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/chat.SessionVO'
+                  type: array
+              type: object
+      summary: 获取会话列表
       tags:
-      - chat
+      - 聊天
   /api/chat/start:
     post:
       consumes:
       - application/json
-      description: 创建一个新的AI聊天会话
       parameters:
-      - description: 聊天标题
+      - description: 请求体
         in: body
-        name: data
+        name: request
+        required: true
         schema:
-          $ref: '#/definitions/dto.ChatStartRequest'
+          $ref: '#/definitions/chat.StartRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/vo.ChatSessionResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: 开始新的聊天会话
+            allOf:
+            - $ref: '#/definitions/chat.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/chat.SessionVO'
+              type: object
+      summary: 开始新对话
       tags:
-      - chat
+      - 聊天
   /api/login:
     post:
       consumes:
       - application/json
-      description: 用户登录，传入用户名和密码
+      description: 用户通过用户名和密码登录，返回token用于后续认证
       parameters:
       - description: 登录信息
         in: body
         name: data
         required: true
         schema:
-          $ref: '#/definitions/dto.UserLoginRequest'
+          $ref: '#/definitions/user.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: 登录成功，返回token和用户信息
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/user.LoginResponse'
         "400":
-          description: Bad Request
+          description: 参数错误
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/user.ErrorResponse'
+        "401":
+          description: 用户名或密码错误
+          schema:
+            $ref: '#/definitions/user.ErrorResponse'
       summary: 用户登录
       tags:
       - user
-  /api/messages:
+  /api/rankings/{rank_type}:
     get:
-      description: 获取指定用户的历史消息记录，支持分页和状态筛选
+      description: 获取指定类型的用户排行榜，按分数降序排列，支持分页查询
       parameters:
-      - description: 用户ID
-        in: query
-        name: user_id
+      - description: 排行榜类型(1-9)
+        in: path
+        name: rank_type
         required: true
-        type: string
-      - default: 1
-        description: 页码
+        type: integer
+      - description: 页码，默认为1
         in: query
         name: page
         type: integer
-      - default: 10
-        description: 每页数量
+      - description: 每页数量，默认为10，最大100
         in: query
         name: limit
         type: integer
-      - description: 状态筛选
-        enum:
-        - pending
-        - completed
-        - failed
-        in: query
-        name: status
-        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: 排行榜数据
           schema:
-            $ref: '#/definitions/vo.MessageListResponse'
+            $ref: '#/definitions/user.RankingListResponse'
         "400":
-          description: Bad Request
+          description: 排行榜类型无效
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: 获取历史消息列表
-      tags:
-      - message
-  /api/query-result:
-    get:
-      description: 根据任务ID查询延迟消息结果
-      parameters:
-      - description: 任务ID
-        in: query
-        name: task_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      summary: 查询消息结果
-      tags:
-      - message
-  /api/rankings:
-    get:
-      description: 获取用户排行榜，按分数降序排列
-      parameters:
-      - default: 1
-        description: 页码
-        in: query
-        name: page
-        type: integer
-      - default: 10
-        description: 每页数量
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/vo.RankingResponse'
-            type: array
+            $ref: '#/definitions/user.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: 服务器错误
           schema:
-            $ref: '#/definitions/vo.ErrorResponse'
+            $ref: '#/definitions/user.ErrorResponse'
       summary: 获取排行榜
       tags:
       - user
@@ -431,58 +448,40 @@ paths:
     post:
       consumes:
       - application/json
-      description: 用户注册，传入用户名和密码
+      description: 用户通过用户名和密码注册新账号，密码将被加密存储
       parameters:
       - description: 注册信息
         in: body
         name: data
         required: true
         schema:
-          $ref: '#/definitions/dto.UserRegisterRequest'
+          $ref: '#/definitions/user.RegisterRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: 注册成功，返回用户信息和token
           schema:
-            $ref: '#/definitions/vo.UserVO'
+            $ref: '#/definitions/user.RegisterResponse'
         "400":
-          description: Bad Request
+          description: 参数错误或用户名已存在
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/user.ErrorResponse'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/user.ErrorResponse'
       summary: 用户注册
       tags:
       - user
-  /api/savegames:
-    get:
-      description: 获取当前用户的所有存档（最多6个）
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/vo.SaveGameResponse'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: 获取用户所有存档
-      tags:
-      - savegame
-  /api/savegames/{slot}:
+  /api/savegame:
     delete:
-      description: 删除指定槽位的存档
       parameters:
-      - description: 存档槽位(1-6)
-        in: path
-        name: slot
+      - description: 槽位号(1-6)
+        in: query
+        maximum: 6
+        minimum: 1
+        name: slot_number
         required: true
         type: integer
       produces:
@@ -491,26 +490,17 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/vo.SuccessMessageResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
+            $ref: '#/definitions/savegame.Response'
       summary: 删除存档
       tags:
-      - savegame
+      - 存档
     get:
-      description: 获取当前用户指定槽位的存档
       parameters:
-      - description: 存档槽位(1-6)
-        in: path
-        name: slot
+      - description: 槽位号(1-6)
+        in: query
+        maximum: 6
+        minimum: 1
+        name: slot_number
         required: true
         type: integer
       produces:
@@ -519,130 +509,91 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/vo.SaveGameResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: 获取指定槽位的存档
+            allOf:
+            - $ref: '#/definitions/savegame.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/savegame.SaveGameVO'
+              type: object
+      summary: 查询存档
       tags:
-      - savegame
-    put:
-      consumes:
-      - application/json
-      description: 在指定槽位创建或更新存档
-      parameters:
-      - description: 存档槽位(1-6)
-        in: path
-        name: slot
-        required: true
-        type: integer
-      - description: 存档数据
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/dto.SaveGameRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/vo.SaveGameResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: 创建或更新存档
-      tags:
-      - savegame
-  /api/send-message:
+      - 存档
     post:
       consumes:
       - application/json
-      description: 发送一段消息，配置时间后返回
       parameters:
-      - description: 消息内容
+      - description: 存档数据
         in: body
-        name: data
+        name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.SendMessageRequest'
+          $ref: '#/definitions/savegame.CreateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: 发送延迟消息
+            allOf:
+            - $ref: '#/definitions/savegame.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/savegame.SaveGameVO'
+              type: object
+      summary: 创建或更新存档
       tags:
-      - message
+      - 存档
+  /api/savegame/all:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/savegame.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/savegame.SaveGameListResponse'
+              type: object
+      summary: 查询所有存档
+      tags:
+      - 存档
   /api/user/score:
     put:
       consumes:
       - application/json
-      description: 更新当前用户的分数
+      description: 更新当前登录用户的指定排行榜分数，分数更新后排行榜缓存将被清除
       parameters:
       - description: 分数信息
         in: body
         name: data
         required: true
         schema:
-          $ref: '#/definitions/dto.UpdateScoreRequest'
+          $ref: '#/definitions/user.UpdateScoreRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: 更新成功
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/user.SuccessResponse'
         "400":
-          description: Bad Request
+          description: 参数错误
           schema:
-            $ref: '#/definitions/vo.ErrorResponse'
+            $ref: '#/definitions/user.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: 未授权
           schema:
-            $ref: '#/definitions/vo.ErrorResponse'
-        "404":
-          description: Not Found
+            $ref: '#/definitions/user.ErrorResponse'
+        "500":
+          description: 服务器错误
           schema:
-            $ref: '#/definitions/vo.ErrorResponse'
+            $ref: '#/definitions/user.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: 更新用户分数
       tags:
       - user
-  /ws:
-    get:
-      description: 建立 WebSocket 连接，接收实时消息推送
-      parameters:
-      - description: 用户ID
-        in: query
-        name: user_id
-        required: true
-        type: string
-      responses: {}
-      summary: WebSocket 连接
-      tags:
-      - message
-schemes:
-- http
 swagger: "2.0"

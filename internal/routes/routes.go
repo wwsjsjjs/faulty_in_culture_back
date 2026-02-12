@@ -1,81 +1,76 @@
 package routes
 
 import (
-	"faulty_in_culture/go_back/internal/handlers"
-	"faulty_in_culture/go_back/internal/logger"
-	"faulty_in_culture/go_back/internal/middleware"
-	ws "faulty_in_culture/go_back/internal/websocket"
+	"faulty_in_culture/go_back/internal/chat"
+	"faulty_in_culture/go_back/internal/savegame"
+	"faulty_in_culture/go_back/internal/shared/infra/logger"
+	"faulty_in_culture/go_back/internal/shared/middleware"
+	"faulty_in_culture/go_back/internal/user"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
-
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.uber.org/zap"
 )
 
-// SetupRoutes 设置所有路由
-// 类型：Gin 路由注册函数
-// 功能：注册所有 API 路由、Swagger 文档路由和健康检查路由，将 HTTP 路径与对应的 handler 绑定。
-func SetupRoutes(router *gin.Engine, wsManager *ws.Manager) {
-	logger.Info("routes.SetupRoutes: 开始设置路由")
+// Handlers 路由处理器集合（依赖注入）
+type Handlers struct {
+	User     *user.Handler
+	Chat     *chat.Handler
+	SaveGame *savegame.Handler
+}
 
-	saveGameHandler := handlers.NewSaveGameHandler()
-	chatHandler := handlers.NewChatHandler(wsManager)
+// SetupRoutes 设置所有路由（简化MVC架构）
+func SetupRoutes(router *gin.Engine, h *Handlers) {
+	logger.Info("开始设置路由（简化MVC架构）")
 
 	api := router.Group("/api")
 	{
-		api.GET("/config", handlers.GetPublicConfig)
+		// 用户模块（公开接口）
+		api.POST("/register", middleware.LimiterGlobal, h.User.Register)
+		api.POST("/login", middleware.LimiterGlobal, h.User.Login)
 
-		api.POST("/register", middleware.LimiterGlobal, handlers.Register)
-		api.POST("/login", middleware.LimiterGlobal, handlers.Login)
+		// 排行榜（公开接口）
+		api.GET("/rankings/:rank_type", middleware.LimiterGlobal, h.User.GetRankings)
 
-		api.POST("/send-message", middleware.LimiterGlobal, handlers.SendMessage)
-		api.GET("/query-result", middleware.LimiterGlobal, handlers.QueryResult)
-		api.GET("/messages", middleware.LimiterGlobal, handlers.GetMessages)
-
-		rankings := api.Group("/rankings")
+		// 用户模块（需要认证）
+		userGroup := api.Group("/user")
+		userGroup.Use(middleware.LimiterGlobal, middleware.AuthMiddleware())
 		{
-			rankings.GET("", middleware.LimiterGlobal, handlers.GetRankings)
+			userGroup.PUT("/score", h.User.UpdateScore)
 		}
 
-		user := api.Group("/user")
-		user.Use(middleware.LimiterGlobal, middleware.AuthMiddleware())
+		// 聊天模块（需要认证）
+		chatGroup := api.Group("/chat")
+		chatGroup.Use(middleware.LimiterGlobal, middleware.AuthMiddleware())
 		{
-			user.PUT("/score", handlers.UpdateUserScore)
+			chatGroup.POST("/start", h.Chat.StartChat)
+			chatGroup.POST("/send", h.Chat.SendMessage)
+			chatGroup.GET("/sessions", h.Chat.ListSessions)
+			chatGroup.GET("/history", h.Chat.GetHistory)
+			chatGroup.DELETE("/recall", h.Chat.RecallMessages)
 		}
 
-		savegames := api.Group("/savegames")
-		savegames.Use(middleware.LimiterGlobal, middleware.AuthMiddleware())
+		// 存档模块（需要认证）
+		saveGameGroup := api.Group("/savegame")
+		saveGameGroup.Use(middleware.LimiterGlobal, middleware.AuthMiddleware())
 		{
-			savegames.GET("", saveGameHandler.GetSaveGames)
-			savegames.GET("/:slot", saveGameHandler.GetSaveGame)
-			savegames.PUT("/:slot", saveGameHandler.CreateOrUpdateSaveGame)
-			savegames.DELETE("/:slot", saveGameHandler.DeleteSaveGame)
-		}
-
-		chat := api.Group("/chat")
-		chat.Use(middleware.LimiterGlobal, middleware.AuthMiddleware())
-		{
-			chat.POST("/start", chatHandler.StartChat)
-			chat.POST("/send", chatHandler.SendMessage)
-			chat.GET("/sessions", chatHandler.GetChatSessions)
-			chat.GET("/:session_id", chatHandler.GetChatHistory)
+			saveGameGroup.GET("", h.SaveGame.QueryBySlot) // ?slot_number=1
+			saveGameGroup.GET("/all", h.SaveGame.QueryAll)
+			saveGameGroup.POST("", h.SaveGame.CreateOrUpdate)
+			saveGameGroup.DELETE("", h.SaveGame.Delete) // ?slot_number=1
 		}
 	}
 
-	router.GET("/ws", handlers.HandleWebSocket)
-
+	// Swagger文档
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"message": "Ranking API is running",
-		})
+		c.JSON(200, gin.H{"status": "ok", "message": "简化MVC架构运行中"})
 	})
 
-	logger.Info("routes.SetupRoutes: 路由设置完成",
-		zap.Int("total_handlers", 3),
-		zap.Strings("groups", []string{"user", "message", "savegame", "chat"}),
+	logger.Info("路由设置完成（简化MVC）",
+		zap.Strings("modules", []string{"user", "chat", "savegame"}),
 	)
 }

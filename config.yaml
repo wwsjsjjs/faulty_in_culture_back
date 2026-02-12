@@ -5,6 +5,7 @@ database:
   password: 1234
   name: culture
   charset: utf8mb4
+  auto_create: true         # 自动创建数据库（如果不存在）
 
 server:
   public_base_url: "http://localhost:8080/api"
@@ -14,6 +15,15 @@ redis:
   port: 6379
   password: ""
   db: 0
+
+ai:
+  api_key: ""               # 腾讯混元AI API密钥（也可使用环境变量HUNYUAN_API_KEY）
+  base_url: "https://api.hunyuan.cloud.tencent.com/v1"
+  model: "hunyuan-lite"     # 使用的模型
+
+jwt:
+  secret: "faulty_in_culture_secret_key_2026"  # JWT 签名密钥（生产环境请使用环境变量）
+  expire_hours: 168          # Token 过期时间（小时，168小时=7天）
 
 message:
   delay_seconds: 10          # 消息延迟处理时间（秒）
