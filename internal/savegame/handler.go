@@ -1,8 +1,14 @@
+﻿// Package savegame - 存档模块HTTP处理层
+// 功能：处理存档相关的HTTP请求
+// 架构：MVC中的Controller层
 package savegame
 
 import (
+	errcode "faulty_in_culture/go_back/internal/shared/errors"
+	"faulty_in_culture/go_back/internal/shared/response"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,13 +17,6 @@ import (
 // Handler层 - MVC的Controller
 // 职责：HTTP请求处理和响应
 // ============================================================
-
-// Response 通用响应结构
-type Response struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data,omitempty"`
-}
 
 // Handler 存档处理器
 type Handler struct {
@@ -34,23 +33,23 @@ func NewHandler(service *Service) *Handler {
 // @Tags 存档
 // @Produce json
 // @Param slot_number query int true "槽位号(1-6)" minimum(1) maximum(6)
-// @Success 200 {object} Response{data=SaveGameVO}
+// @Success 200 {object} response.Response{data=SaveGameVO}
 // @Router /api/savegame [get]
 func (h *Handler) QueryBySlot(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	slotNumber, _ := strconv.Atoi(c.Query("slot_number"))
 
 	if slotNumber < 1 || slotNumber > 6 {
-		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "槽位号必须在1-6之间"})
+		response.Error(c, http.StatusBadRequest, errcode.InvalidSlotNumber)
 		return
 	}
 
 	save, err := h.service.QueryBySlot(userID, slotNumber)
 	if err != nil {
-		if err == ErrSaveGameNotFound {
-			c.JSON(http.StatusNotFound, Response{Code: 404, Msg: "存档不存在"})
+		if strings.Contains(err.Error(), "存档不存在") {
+			response.Error(c, http.StatusNotFound, errcode.SaveGameNotFound)
 		} else {
-			c.JSON(http.StatusInternalServerError, Response{Code: 500, Msg: err.Error()})
+			response.Error(c, http.StatusInternalServerError, errcode.ServerError)
 		}
 		return
 	}
@@ -62,21 +61,21 @@ func (h *Handler) QueryBySlot(c *gin.Context) {
 		SavedAt:    save.SavedAt,
 	}
 
-	c.JSON(http.StatusOK, Response{Code: 0, Msg: "success", Data: vo})
+	response.Success(c, vo)
 }
 
 // QueryAll 查询所有存档
 // @Summary 查询所有存档
 // @Tags 存档
 // @Produce json
-// @Success 200 {object} Response{data=SaveGameListResponse}
+// @Success 200 {object} response.Response{data=SaveGameListResponse}
 // @Router /api/savegame/all [get]
 func (h *Handler) QueryAll(c *gin.Context) {
 	userID := c.GetUint("user_id")
 
 	saves, err := h.service.QueryAll(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, Response{Code: 500, Msg: err.Error()})
+		response.Error(c, http.StatusInternalServerError, errcode.ServerError)
 		return
 	}
 
@@ -90,11 +89,7 @@ func (h *Handler) QueryAll(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, Response{
-		Code: 0,
-		Msg:  "success",
-		Data: SaveGameListResponse{Total: len(vos), List: vos},
-	})
+	response.Success(c, SaveGameListResponse{Total: len(vos), List: vos})
 }
 
 // CreateOrUpdate 创建或更新存档
@@ -103,23 +98,23 @@ func (h *Handler) QueryAll(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body CreateRequest true "存档数据"
-// @Success 200 {object} Response{data=SaveGameVO}
+// @Success 200 {object} response.Response{data=SaveGameVO}
 // @Router /api/savegame [post]
 func (h *Handler) CreateOrUpdate(c *gin.Context) {
 	userID := c.GetUint("user_id")
 
 	var req CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "参数错误"})
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
 		return
 	}
 
 	save, err := h.service.CreateOrUpdate(userID, req.SlotNumber, req.GameData)
 	if err != nil {
-		if err == ErrInvalidSlotNumber {
-			c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: err.Error()})
+		if strings.Contains(err.Error(), "槽位号无效") {
+			response.Error(c, http.StatusBadRequest, errcode.InvalidSlotNumber)
 		} else {
-			c.JSON(http.StatusInternalServerError, Response{Code: 500, Msg: err.Error()})
+			response.Error(c, http.StatusInternalServerError, errcode.ServerError)
 		}
 		return
 	}
@@ -131,7 +126,7 @@ func (h *Handler) CreateOrUpdate(c *gin.Context) {
 		SavedAt:    save.SavedAt,
 	}
 
-	c.JSON(http.StatusOK, Response{Code: 0, Msg: "保存成功", Data: vo})
+	response.SuccessWithMessage(c, "保存成功", vo)
 }
 
 // Delete 删除存档
@@ -139,26 +134,26 @@ func (h *Handler) CreateOrUpdate(c *gin.Context) {
 // @Tags 存档
 // @Produce json
 // @Param slot_number query int true "槽位号(1-6)" minimum(1) maximum(6)
-// @Success 200 {object} Response
+// @Success 200 {object} response.Response
 // @Router /api/savegame [delete]
 func (h *Handler) Delete(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	slotNumber, _ := strconv.Atoi(c.Query("slot_number"))
 
 	if slotNumber < 1 || slotNumber > 6 {
-		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "槽位号必须在1-6之间"})
+		response.Error(c, http.StatusBadRequest, errcode.InvalidSlotNumber)
 		return
 	}
 
 	err := h.service.Delete(userID, slotNumber)
 	if err != nil {
-		if err == ErrSaveGameNotFound {
-			c.JSON(http.StatusNotFound, Response{Code: 404, Msg: "存档不存在"})
+		if strings.Contains(err.Error(), "存档不存在") {
+			response.Error(c, http.StatusNotFound, errcode.SaveGameNotFound)
 		} else {
-			c.JSON(http.StatusInternalServerError, Response{Code: 500, Msg: err.Error()})
+			response.Error(c, http.StatusInternalServerError, errcode.ServerError)
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{Code: 0, Msg: "删除成功"})
+	response.SuccessWithMessage(c, "删除成功", nil)
 }

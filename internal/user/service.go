@@ -1,3 +1,6 @@
+﻿// Package user - 用户模块业务逻辑层
+// 功能：实现用户注册、登录、认证等业务规则
+// 特点：密码加密、JWT Token生成、缓存管理
 package user
 
 import (
@@ -63,32 +66,30 @@ func (s *Service) Register(username, password string) (*Entity, string, error) {
 	// 检查用户名是否存在
 	existUser, err := s.repo.FindByUsername(username)
 	if err == nil && existUser != nil {
-		return nil, "", ErrUserAlreadyExists
+		return nil, "", fmt.Errorf("用户名已存在")
 	}
-	if err != nil && err != ErrUserNotFound {
+	if err != nil && err.Error() != "用户不存在" {
 		return nil, "", err
 	}
 
 	// 密码加密
 	hash, err := s.passwordHasher.Hash(password)
 	if err != nil {
-		return nil, "", ErrHashPassword
+		return nil, "", fmt.Errorf("密码加密失败")
 	}
 
 	// 创建用户实体
 	now := time.Now()
 	user := &Entity{
-		Username:       username,
-		Password:       hash,
-		CreatedAt:      now,
-		LastLoginAt:    now,
-		Score:          0,
-		ScoreUpdatedAt: now,
+		Username:    username,
+		Password:    hash,
+		CreatedAt:   now,
+		LastLoginAt: now,
 	}
 
 	// 持久化
 	if err := s.repo.Create(user); err != nil {
-		return nil, "", ErrCreateUser
+		return nil, "", fmt.Errorf("创建用户失败")
 	}
 
 	// 生成Token
@@ -122,7 +123,7 @@ func (s *Service) Login(username, password string) (*Entity, string, error) {
 		var err error
 		user, err = s.repo.FindByUsername(username)
 		if err != nil {
-			return nil, "", ErrInvalidPassword // 不暴露用户是否存在
+			return nil, "", fmt.Errorf("用户名或密码错误") // 不暴露用户是否存在
 		}
 
 		// 写入缓存
@@ -133,7 +134,7 @@ func (s *Service) Login(username, password string) (*Entity, string, error) {
 
 	// 验证密码
 	if !s.passwordHasher.Check(password, user.Password) {
-		return nil, "", ErrInvalidPassword
+		return nil, "", fmt.Errorf("用户名或密码错误")
 	}
 
 	// 更新最后登录时间
@@ -148,103 +149,67 @@ func (s *Service) Login(username, password string) (*Entity, string, error) {
 	return user, token, nil
 }
 
-// UpdateScore 更新用户分数
-// 业务规则：
-// 1. 验证排行榜类型(1-9)
-// 2. 分数必须>=0
-// 3. 更新后清除相关缓存
-func (s *Service) UpdateScore(userID uint, rankType, score int) error {
-	// 验证排行榜类型
-	if !ValidateRankType(rankType) {
-		return ErrInvalidRankType
-	}
-
-	// 验证分数
-	if score < 0 {
-		return ErrInvalidScore
-	}
-
-	// 更新分数（Repository内部使用策略模式）
-	if err := s.repo.UpdateScore(userID, rankType, score); err != nil {
-		return ErrUpdateScore
-	}
-
-	// 清除排行榜缓存
-	if s.cache != nil {
-		s.clearRankingCache(rankType)
-	}
-
-	return nil
-}
-
-// GetRankings 获取排行榜
-// 业务规则：
-// 1. 验证排行榜类型
-// 2. 支持分页
-// 3. 使用缓存提高性能
-func (s *Service) GetRankings(rankType, page, limit int) ([]RankingItem, error) {
-	// 验证排行榜类型
-	if !ValidateRankType(rankType) {
-		return nil, ErrInvalidRankType
-	}
-
-	// 验证分页参数
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 10
-	}
-
-	offset := (page - 1) * limit
-	cacheKey := fmt.Sprintf("rankings:type:%d:page:%d:limit:%d", rankType, page, limit)
-
+// GetUsername 获取用户名（供其他Service调用）
+// 用于Service层组合调用模式
+func (s *Service) GetUsername(userID uint) (string, error) {
 	// 尝试从缓存获取
-	var rankings []RankingItem
 	if s.cache != nil {
-		if err := s.cache.Get(cacheKey, &rankings); err == nil && len(rankings) > 0 {
-			return rankings, nil
+		cacheKey := fmt.Sprintf("user:username:%d", userID)
+		var username string
+		if err := s.cache.Get(cacheKey, &username); err == nil && username != "" {
+			return username, nil
 		}
 	}
 
 	// 从数据库查询
-	users, err := s.repo.GetRankings(rankType, offset, limit)
+	user, err := s.repo.FindByID(userID)
+	if err != nil {
+		return "", err
+	}
+
+	// 写入缓存（缓存30分钟）
+	if s.cache != nil {
+		cacheKey := fmt.Sprintf("user:username:%d", userID)
+		s.cache.Set(cacheKey, user.Username, 30*time.Minute)
+	}
+
+	return user.Username, nil
+}
+
+// GetUsernames 批量获取用户名（优化N+1查询）
+// 返回 map[userID]username
+func (s *Service) GetUsernames(userIDs []uint) (map[uint]string, error) {
+	if len(userIDs) == 0 {
+		return map[uint]string{}, nil
+	}
+
+	// 去重
+	uniqueIDs := make([]uint, 0, len(userIDs))
+	idSet := make(map[uint]bool)
+	for _, id := range userIDs {
+		if !idSet[id] {
+			uniqueIDs = append(uniqueIDs, id)
+			idSet[id] = true
+		}
+	}
+
+	// 批量查询数据库
+	users, err := s.repo.FindByIDs(uniqueIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	// 使用策略模式获取对应分数
-	strategy := GetScoreStrategy(rankType)
-	rankings = make([]RankingItem, len(users))
-	for i, u := range users {
-		rankings[i] = RankingItem{
-			ID:       u.ID,
-			Username: u.Username,
-			Score:    strategy.GetScore(u),
-			Rank:     offset + i + 1,
+	// 构建 userID -> username 映射
+	result := make(map[uint]string, len(users))
+	for _, user := range users {
+		result[user.ID] = user.Username
+
+		// 写入缓存
+		if s.cache != nil {
+			cacheKey := fmt.Sprintf("user:username:%d", user.ID)
+			s.cache.Set(cacheKey, user.Username, 30*time.Minute)
 		}
 	}
 
-	// 写入缓存
-	if s.cache != nil {
-		s.cache.Set(cacheKey, rankings, 5*time.Minute)
-	}
-
-	return rankings, nil
-}
-
-// clearRankingCache 清除排行榜缓存
-// 清除指定排行榜类型的所有分页缓存
-func (s *Service) clearRankingCache(rankType int) {
-	if s.cache == nil {
-		return
-	}
-
-	// 清除常见的分页缓存
-	for page := 1; page <= 10; page++ {
-		for limit := 10; limit <= 100; limit += 10 {
-			cacheKey := fmt.Sprintf("rankings:type:%d:page:%d:limit:%d", rankType, page, limit)
-			s.cache.Delete(cacheKey)
-		}
-	}
+	return result, nil
 }

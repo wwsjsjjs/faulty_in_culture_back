@@ -28,25 +28,13 @@ definitions:
         example: 1
         type: integer
     type: object
-  chat.Response:
-    properties:
-      code:
-        type: integer
-      data: {}
-      msg:
-        type: string
-    type: object
   chat.SendMessageRequest:
     properties:
       content:
         example: 你好
         type: string
-      session_id:
-        example: 1
-        type: integer
     required:
     - content
-    - session_id
     type: object
   chat.SessionVO:
     properties:
@@ -71,6 +59,102 @@ definitions:
       title:
         example: 新对话
         type: string
+    required:
+    - title
+    type: object
+  chat.UpdateSessionRequest:
+    properties:
+      title:
+        example: 更新的标题
+        type: string
+    required:
+    - title
+    type: object
+  ranking.RankingItem:
+    properties:
+      rank:
+        description: 排名
+        example: 1
+        type: integer
+      score:
+        description: 分数
+        example: 100
+        type: integer
+      updated_at:
+        description: 更新时间
+        example: "2023-12-20T10:00:00Z"
+        type: string
+      user_id:
+        description: 用户ID
+        example: 1
+        type: integer
+      username:
+        description: 用户名
+        example: player1
+        type: string
+    type: object
+  ranking.RankingListResponse:
+    properties:
+      limit:
+        description: 每页数量
+        example: 10
+        type: integer
+      page:
+        description: 当前页
+        example: 1
+        type: integer
+      rank_type:
+        description: 排行榜类型
+        example: 1
+        type: integer
+      rankings:
+        description: 排行榜数据
+        items:
+          $ref: '#/definitions/ranking.RankingItem'
+        type: array
+    type: object
+  ranking.UpdateScoreRequest:
+    properties:
+      rank_type:
+        description: 排行榜类型1-9
+        example: 1
+        maximum: 9
+        minimum: 1
+        type: integer
+      score:
+        description: 分数
+        example: 100
+        minimum: 0
+        type: integer
+    required:
+    - rank_type
+    - score
+    type: object
+  ranking.UpdateScoreResponse:
+    properties:
+      rank_type:
+        example: 1
+        type: integer
+      score:
+        example: 100
+        type: integer
+      updated_at:
+        example: "2023-12-20T10:00:00Z"
+        type: string
+      user_id:
+        example: 1
+        type: integer
+    type: object
+  response.Response:
+    properties:
+      code:
+        description: 业务错误码
+        type: integer
+      data:
+        description: 响应数据（可选）
+      message:
+        description: 错误消息
+        type: string
     type: object
   savegame.CreateRequest:
     properties:
@@ -85,14 +169,6 @@ definitions:
     required:
     - game_data
     - slot_number
-    type: object
-  savegame.Response:
-    properties:
-      code:
-        type: integer
-      data: {}
-      msg:
-        type: string
     type: object
   savegame.SaveGameListResponse:
     properties:
@@ -119,12 +195,6 @@ definitions:
         example: 1
         type: integer
     type: object
-  user.ErrorResponse:
-    properties:
-      error:
-        example: invalid request
-        type: string
-    type: object
   user.LoginRequest:
     properties:
       password:
@@ -144,34 +214,6 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/user.UserVO'
-    type: object
-  user.RankingItem:
-    properties:
-      id:
-        example: 1
-        type: integer
-      rank:
-        example: 1
-        type: integer
-      score:
-        example: 1000
-        type: integer
-      username:
-        example: player1
-        type: string
-    type: object
-  user.RankingListResponse:
-    properties:
-      limit:
-        example: 10
-        type: integer
-      page:
-        example: 1
-        type: integer
-      rankings:
-        items:
-          $ref: '#/definitions/user.RankingItem'
-        type: array
     type: object
   user.RegisterRequest:
     properties:
@@ -197,28 +239,6 @@ definitions:
         example: player1
         type: string
     type: object
-  user.SuccessResponse:
-    properties:
-      message:
-        example: success
-        type: string
-    type: object
-  user.UpdateScoreRequest:
-    properties:
-      rank_type:
-        description: 排行榜类型1-9
-        example: 1
-        maximum: 9
-        minimum: 1
-        type: integer
-      score:
-        description: 分数
-        example: 100
-        minimum: 0
-        type: integer
-    required:
-    - rank_type
-    type: object
   user.UserVO:
     properties:
       id:
@@ -231,96 +251,28 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  title: faulty_in_culture API
+  description: 游戏后端API服务 - 提供用户认证、排行榜、AI聊天、存档管理功能
+  title: Faulty In Culture API
   version: "1.0"
 paths:
-  /api/chat/history:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: 会话ID
-        in: query
-        name: session_id
-        required: true
-        type: integer
-      - default: 0
-        description: 偏移量
-        in: query
-        name: offset
-        type: integer
-      - default: 50
-        description: 每页数量
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/chat.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/chat.HistoryResponse'
-              type: object
-      summary: 获取聊天历史
-      tags:
-      - 聊天
-  /api/chat/recall:
+  /api/chat/messages/{id}:
     delete:
       consumes:
       - application/json
       parameters:
-      - description: 会话ID
-        in: query
-        name: session_id
+      - description: 消息ID
+        in: path
+        name: id
         required: true
         type: integer
-      - description: 消息ID列表
-        in: body
-        name: message_ids
-        required: true
-        schema:
-          items:
-            type: integer
-          type: array
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/chat.Response'
+            $ref: '#/definitions/response.Response'
       summary: 撤回消息
-      tags:
-      - 聊天
-  /api/chat/send:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: 请求体
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/chat.SendMessageRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/chat.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/chat.MessageVO'
-              type: object
-      summary: 发送消息
       tags:
       - 聊天
   /api/chat/sessions:
@@ -343,7 +295,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/chat.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   items:
@@ -353,7 +305,6 @@ paths:
       summary: 获取会话列表
       tags:
       - 聊天
-  /api/chat/start:
     post:
       consumes:
       - application/json
@@ -371,12 +322,147 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/chat.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   $ref: '#/definitions/chat.SessionVO'
               type: object
-      summary: 开始新对话
+      summary: 创建新会话
+      tags:
+      - 聊天
+  /api/chat/sessions/{id}:
+    delete:
+      parameters:
+      - description: 会话ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除会话
+      tags:
+      - 聊天
+    get:
+      parameters:
+      - description: 会话ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/chat.SessionVO'
+              type: object
+      summary: 获取会话详情
+      tags:
+      - 聊天
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: 会话ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 请求体
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chat.UpdateSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/chat.SessionVO'
+              type: object
+      summary: 更新会话
+      tags:
+      - 聊天
+  /api/chat/sessions/{id}/messages:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 会话ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 0
+        description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      - default: 50
+        description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/chat.HistoryResponse'
+              type: object
+      summary: 获取消息历史
+      tags:
+      - 聊天
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 会话ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 请求体
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/chat.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/chat.MessageVO'
+              type: object
+      summary: 发送消息
       tags:
       - 聊天
   /api/login:
@@ -401,17 +487,105 @@ paths:
         "400":
           description: 参数错误
           schema:
-            $ref: '#/definitions/user.ErrorResponse'
+            $ref: '#/definitions/response.Response'
         "401":
           description: 用户名或密码错误
           schema:
-            $ref: '#/definitions/user.ErrorResponse'
+            $ref: '#/definitions/response.Response'
       summary: 用户登录
       tags:
       - user
+  /api/rankings:
+    delete:
+      description: 删除当前登录用户的所有排行榜记录
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除所有排行榜记录
+      tags:
+      - ranking
+    post:
+      consumes:
+      - application/json
+      description: 更新当前登录用户的指定排行榜分数，只在新分数更高时更新
+      parameters:
+      - description: 更新分数请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ranking.UpdateScoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/ranking.UpdateScoreResponse'
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新排行榜分数
+      tags:
+      - ranking
   /api/rankings/{rank_type}:
+    delete:
+      description: 删除当前登录用户的指定类型排行榜记录
+      parameters:
+      - description: 排行榜类型(1-9)
+        in: path
+        name: rank_type
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: 未认证
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 删除指定类型排行榜记录
+      tags:
+      - ranking
     get:
-      description: 获取指定类型的用户排行榜，按分数降序排列，支持分页查询
+      description: 获取指定类型的排行榜，按分数降序排列，支持分页查询
       parameters:
       - description: 排行榜类型(1-9)
         in: path
@@ -432,18 +606,18 @@ paths:
         "200":
           description: 排行榜数据
           schema:
-            $ref: '#/definitions/user.RankingListResponse'
+            $ref: '#/definitions/ranking.RankingListResponse'
         "400":
           description: 排行榜类型无效
           schema:
-            $ref: '#/definitions/user.ErrorResponse'
+            $ref: '#/definitions/response.Response'
         "500":
           description: 服务器错误
           schema:
-            $ref: '#/definitions/user.ErrorResponse'
+            $ref: '#/definitions/response.Response'
       summary: 获取排行榜
       tags:
-      - user
+      - ranking
   /api/register:
     post:
       consumes:
@@ -466,11 +640,11 @@ paths:
         "400":
           description: 参数错误或用户名已存在
           schema:
-            $ref: '#/definitions/user.ErrorResponse'
+            $ref: '#/definitions/response.Response'
         "500":
           description: 服务器错误
           schema:
-            $ref: '#/definitions/user.ErrorResponse'
+            $ref: '#/definitions/response.Response'
       summary: 用户注册
       tags:
       - user
@@ -490,7 +664,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/savegame.Response'
+            $ref: '#/definitions/response.Response'
       summary: 删除存档
       tags:
       - 存档
@@ -510,7 +684,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/savegame.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   $ref: '#/definitions/savegame.SaveGameVO'
@@ -535,7 +709,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/savegame.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   $ref: '#/definitions/savegame.SaveGameVO'
@@ -552,7 +726,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/savegame.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
                   $ref: '#/definitions/savegame.SaveGameListResponse'
@@ -560,40 +734,4 @@ paths:
       summary: 查询所有存档
       tags:
       - 存档
-  /api/user/score:
-    put:
-      consumes:
-      - application/json
-      description: 更新当前登录用户的指定排行榜分数，分数更新后排行榜缓存将被清除
-      parameters:
-      - description: 分数信息
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/user.UpdateScoreRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 更新成功
-          schema:
-            $ref: '#/definitions/user.SuccessResponse'
-        "400":
-          description: 参数错误
-          schema:
-            $ref: '#/definitions/user.ErrorResponse'
-        "401":
-          description: 未授权
-          schema:
-            $ref: '#/definitions/user.ErrorResponse'
-        "500":
-          description: 服务器错误
-          schema:
-            $ref: '#/definitions/user.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: 更新用户分数
-      tags:
-      - user
 swagger: "2.0"

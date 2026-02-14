@@ -2,9 +2,9 @@ package db
 
 import (
 	"faulty_in_culture/go_back/internal/chat"
+	"faulty_in_culture/go_back/internal/infra/config"
+	"faulty_in_culture/go_back/internal/infra/logger"
 	"faulty_in_culture/go_back/internal/savegame"
-	"faulty_in_culture/go_back/internal/shared/infra/config"
-	"faulty_in_culture/go_back/internal/shared/infra/logger"
 	"faulty_in_culture/go_back/internal/user"
 	"fmt"
 
@@ -24,7 +24,7 @@ func InitDatabase() error {
 	var err error
 
 	// 从配置读取数据库信息
-	dbConf := config.AppConfig.Database
+	dbConf := config.GlobalConfig.Database
 
 	// 如果启用自动创建，先创建数据库
 	if dbConf.AutoCreate {

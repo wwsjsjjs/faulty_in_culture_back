@@ -5,6 +5,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"faulty_in_culture/go_back/internal/infra/config"
 	"fmt"
 	"time"
 
@@ -27,11 +28,14 @@ var (
 func InitCache() error {
 	ctx := context.Background()
 
+	// 从配置读取 Redis 信息
+	redisConf := config.GlobalConfig.Redis
+
 	// 创建 Redis 客户端
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379", // Redis 服务器地址
-		Password: "",               // 密码（如果设置了密码）
-		DB:       0,                // 使用默认数据库
+		Addr:     fmt.Sprintf("%s:%d", redisConf.Host, redisConf.Port),
+		Password: redisConf.Password,
+		DB:       redisConf.DB,
 	})
 
 	// 测试连接

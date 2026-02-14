@@ -1,18 +1,24 @@
+// Package chat - AI聊天模块数据传输对象
+// 功能：定义API请求和响应的数据结构
 package chat
 
 import "time"
 
 // ============ 请求DTO ============
 
-// StartRequest 开始聊天请求
+// StartRequest 开始聊天请求（创建会话）
 type StartRequest struct {
-	Title string `json:"title" example:"新对话"`
+	Title string `json:"title" binding:"required" example:"新对话"`
+}
+
+// UpdateSessionRequest 更新会话请求
+type UpdateSessionRequest struct {
+	Title string `json:"title" binding:"required" example:"更新的标题"`
 }
 
 // SendMessageRequest 发送消息请求
 type SendMessageRequest struct {
-	SessionID uint   `json:"session_id" binding:"required" example:"1"`
-	Content   string `json:"content" binding:"required" example:"你好"`
+	Content string `json:"content" binding:"required" example:"你好"`
 }
 
 // ============ 响应VO ============

@@ -1,3 +1,9 @@
+app:
+  environment: development  # 环境：development/production
+  port: "8080"              # 服务端口
+  log_mode: dev             # 日志模式：dev/prod
+  gin_mode: debug           # Gin模式：debug/release
+
 database:
   host: 127.0.0.1
   port: 3306
@@ -6,9 +12,6 @@ database:
   name: culture
   charset: utf8mb4
   auto_create: true         # 自动创建数据库（如果不存在）
-
-server:
-  public_base_url: "http://localhost:8080/api"
 
 redis:
   host: 127.0.0.1
@@ -24,9 +27,3 @@ ai:
 jwt:
   secret: "faulty_in_culture_secret_key_2026"  # JWT 签名密钥（生产环境请使用环境变量）
   expire_hours: 168          # Token 过期时间（小时，168小时=7天）
-
-message:
-  delay_seconds: 10          # 消息延迟处理时间（秒）
-  cleanup_days: 30           # 清理30天前的已完成消息
-  failed_cleanup_days: 7     # 清理7天前的失败消息
-  cleanup_schedule_hour: 2   # 每天凌晨2点执行清理

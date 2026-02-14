@@ -49,10 +49,42 @@ user模块展示了8种设计模式：
 
 ##  快速开始
 
-\\\
+### 开发环境
+\\\bash
+# 1. 安装依赖
 go mod download
+
+# 2. 生成Swagger文档
 swag init -g cmd/server/main.go -o docs
+
+# 3. 使用开发配置启动（默认）
 go run cmd/server/main.go
 \\\
 
-配置文件 \config.yaml\ 需包含MySQL、Redis、AI配置。
+### 生产环境
+\\\bash
+# 使用生产配置启动
+cp config.prod.yaml config.yaml
+# 修改config.yaml中的敏感信息后启动
+go run cmd/server/main.go
+\\\
+
+##  配置文件
+
+项目支持**开发环境**和**生产环境**分离配置：
+
+- **config.yaml** - 开发环境配置（默认）
+- **config.prod.yaml** - 生产环境配置模板
+
+配置项包括：
+- **app**: 应用配置（环境、端口、日志模式、Gin模式）
+- **database**: MySQL数据库配置
+- **redis**: Redis缓存配置
+- **ai**: AI服务配置（腾讯混元等）
+- **jwt**: JWT认证配置
+
+**生产环境注意事项**：
+- 将敏感信息（密码、密钥）配置为环境变量
+- 设置 `app.environment: production`
+- 设置 `app.gin_mode: release`
+- 设置 `database.auto_create: false`

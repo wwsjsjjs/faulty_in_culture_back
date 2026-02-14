@@ -1,3 +1,5 @@
+// Package savegame - 存档模块数据传输对象
+// 功能：定义API请求和响应的数据结构
 package savegame
 
 import "time"

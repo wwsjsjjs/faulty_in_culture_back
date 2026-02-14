@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"faulty_in_culture/go_back/internal/shared/infra/config"
+	"faulty_in_culture/go_back/internal/infra/config"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -35,8 +35,8 @@ func CheckPassword(password, hash string) bool {
 
 // GenerateToken 生成 JWT Token（使用 golang-jwt 框架）
 func GenerateToken(userID uint, username string) (string, error) {
-	cfg := config.AppConfig.JWT
-	
+	cfg := config.GlobalConfig.JWT
+
 	// 创建 Claims
 	claims := Claims{
 		UserID:   userID,
@@ -55,8 +55,8 @@ func GenerateToken(userID uint, username string) (string, error) {
 
 // ParseToken 解析 JWT Token（使用 golang-jwt 框架）
 func ParseToken(tokenString string) (*Claims, error) {
-	cfg := config.AppConfig.JWT
-	
+	cfg := config.GlobalConfig.JWT
+
 	// 解析 Token
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(cfg.Secret), nil

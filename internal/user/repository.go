@@ -1,3 +1,6 @@
+// Package user - 用户模块数据访问层
+// 功能：封装用户数据的CRUD操作
+// 设计模式：Repository模式
 package user
 
 import (
@@ -30,12 +33,10 @@ type Repository interface {
 	FindByUsername(username string) (*Entity, error)
 	// Update 更新用户信息
 	Update(user *Entity) error
-	// UpdateScore 更新指定排行榜的分数
-	UpdateScore(userID uint, rankType, score int) error
-	// GetRankings 获取排行榜（分页）
-	GetRankings(rankType, offset, limit int) ([]*Entity, error)
 	// UpdateLastLogin 更新最后登录时间
 	UpdateLastLogin(userID uint) error
+	// FindByIDs 批量查询用户（优化N+1查询）
+	FindByIDs(userIDs []uint) ([]*Entity, error)
 }
 
 // repositoryImpl Repository的GORM实现
@@ -60,7 +61,7 @@ func (r *repositoryImpl) FindByID(id uint) (*Entity, error) {
 	err := r.db.First(&user, id).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, ErrUserNotFound
+			return nil, fmt.Errorf("用户不存在")
 		}
 		return nil, err
 	}
@@ -73,7 +74,7 @@ func (r *repositoryImpl) FindByUsername(username string) (*Entity, error) {
 	err := r.db.Where("username = ?", username).First(&user).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, ErrUserNotFound
+			return nil, fmt.Errorf("用户不存在")
 		}
 		return nil, err
 	}
@@ -85,46 +86,22 @@ func (r *repositoryImpl) Update(user *Entity) error {
 	return r.db.Save(user).Error
 }
 
-// UpdateScore 更新指定排行榜的分数
-// 使用策略模式动态选择要更新的字段
-func (r *repositoryImpl) UpdateScore(userID uint, rankType, score int) error {
-	strategy := GetScoreStrategy(rankType)
-	if strategy == nil {
-		return ErrInvalidRankType
-	}
-
-	// 先查询用户
-	user, err := r.FindByID(userID)
-	if err != nil {
-		return err
-	}
-
-	// 使用策略设置分数
-	strategy.SetScore(user, score)
-	user.ScoreUpdatedAt = time.Now()
-
-	// 更新到数据库
-	return r.Update(user)
-}
-
-// GetRankings 获取排行榜
-// 使用策略模式动态选择排序字段
-func (r *repositoryImpl) GetRankings(rankType, offset, limit int) ([]*Entity, error) {
-	strategy := GetScoreStrategy(rankType)
-	if strategy == nil {
-		return nil, ErrInvalidRankType
-	}
-
-	var users []*Entity
-	// 使用策略获取字段名进行排序
-	orderBy := fmt.Sprintf("%s DESC, score_updated_at ASC", strategy.GetFieldName())
-	err := r.db.Order(orderBy).Limit(limit).Offset(offset).Find(&users).Error
-
-	return users, err
-}
-
 // UpdateLastLogin 更新最后登录时间
 func (r *repositoryImpl) UpdateLastLogin(userID uint) error {
 	return r.db.Model(&Entity{}).Where("id = ?", userID).
 		Update("last_login_at", time.Now()).Error
+}
+
+// FindByIDs 批量查询用户（优化N+1查询）
+func (r *repositoryImpl) FindByIDs(userIDs []uint) ([]*Entity, error) {
+	if len(userIDs) == 0 {
+		return []*Entity{}, nil
+	}
+
+	var users []*Entity
+	err := r.db.Where("id IN ?", userIDs).Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
 }

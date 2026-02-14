@@ -1,0 +1,111 @@
+version: '3.8'
+
+# ===================================
+# Docker Compose 配置
+# 服务：MySQL + Redis + Go应用
+# 网络：内部bridge网络
+# 数据持久化：使用volumes
+# ===================================
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: culture_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-your-secure-password}
+      MYSQL_DATABASE: ${DB_NAME:-culture}
+      MYSQL_USER: ${DB_USER:-culture_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-your-secure-password}
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"  # 仅用于调试，生产环境可以注释掉
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # 可选：初始化SQL脚本
+    networks:
+      - app_network
+    command: 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: culture_redis
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "6379:6379"  # 仅用于调试，生产环境可以注释掉
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Go 应用服务
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: culture_app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # 映射到宿主机8080端口
+    environment:
+      # 数据库配置
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=${DB_USER:-culture_user}
+      - DB_PASSWORD=${DB_PASSWORD:-your-secure-password}
+      - DB_NAME=${DB_NAME:-culture}
+      
+      # Redis配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      
+      # JWT配置
+      - JWT_SECRET=${JWT_SECRET:-your-production-secret-key-change-this}
+      
+      # AI配置
+      - HUNYUAN_API_KEY=${HUNYUAN_API_KEY:-}
+      
+      # 应用配置
+      - APP_ENV=production
+      - GIN_MODE=release
+      - LOG_MODE=prod
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+    volumes:
+      - ./logs:/app/logs  # 日志持久化
+
+# 网络配置
+networks:
+  app_network:
+    driver: bridge
+
+# 数据卷持久化
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local

@@ -1,6 +1,11 @@
+﻿// Package savegame - 存档模块数据访问层
+// 功能：封装存档数据的CRUD操作
+// 设计模式：Repository模式
 package savegame
 
 import (
+	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -38,7 +43,7 @@ func (r *repositoryImpl) FindByUserIDAndSlot(userID uint, slotNumber int) (*Enti
 	err := r.db.Where("user_id = ? AND slot_number = ?", userID, slotNumber).First(&save).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, ErrSaveGameNotFound
+			return nil, fmt.Errorf("存档不存在")
 		}
 		return nil, err
 	}
@@ -61,7 +66,7 @@ func (r *repositoryImpl) Delete(userID uint, slotNumber int) error {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return ErrSaveGameNotFound
+		return fmt.Errorf("存档不存在")
 	}
 	return nil
 }

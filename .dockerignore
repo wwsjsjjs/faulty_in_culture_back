@@ -1,0 +1,65 @@
+# Git 相关
+.git/
+.gitignore
+.github/
+
+# 文档
+*.md
+docs/
+temp.md
+数据库.md
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 编译输出
+server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+dist/
+
+# 依赖目录
+vendor/
+
+# 测试覆盖率
+*.coverprofile
+coverage.*
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# 日志文件
+*.log
+logs/
+
+# 配置文件（开发环境）
+config.yaml
+.env.local
+
+# 数据库文件
+*.db
+*.sqlite
+*.sql
+sql.dbml
+sql.dbdiagram
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose*.yml

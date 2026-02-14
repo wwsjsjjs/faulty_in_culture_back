@@ -1,0 +1,29 @@
+app:
+  environment: production   # 环境：development/production
+  port: "8080"              # 服务端口
+  log_mode: prod            # 日志模式：dev/prod
+  gin_mode: release         # Gin模式：debug/release
+
+database:
+  host: your-db-host        # 生产环境数据库地址
+  port: 3306
+  user: your-db-user        # 生产环境数据库用户
+  password: your-db-pass    # 生产环境数据库密码（建议使用环境变量）
+  name: culture
+  charset: utf8mb4
+  auto_create: false        # 生产环境不自动创建数据库
+
+redis:
+  host: your-redis-host     # 生产环境Redis地址
+  port: 6379
+  password: your-redis-pass # 生产环境Redis密码（建议使用环境变量）
+  db: 0
+
+ai:
+  api_key: ""               # 腾讯混元AI API密钥（建议使用环境变量HUNYUAN_API_KEY）
+  base_url: "https://api.hunyuan.cloud.tencent.com/v1"
+  model: "hunyuan-lite"     # 使用的模型
+
+jwt:
+  secret: "your-production-secret-key"  # JWT 签名密钥（建议使用环境变量）
+  expire_hours: 168          # Token 过期时间（小时，168小时=7天）

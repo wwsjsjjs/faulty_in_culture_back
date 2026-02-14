@@ -1,3 +1,6 @@
+﻿// Package chat - AI聊天模块业务逻辑层
+// 功能：实现聊天会话和消息管理的业务规则
+// 特点：异步AI调用、消息历史管理、会话CRUD
 package chat
 
 import (
@@ -26,8 +29,8 @@ type WSManager interface {
 
 // Cache 缓存接口（依赖注入）
 type Cache interface {
-	Get(key string) (string, error)
-	Set(key string, value string, duration time.Duration) error
+	Get(key string, dest interface{}) error
+	Set(key string, value interface{}, expiration time.Duration) error
 	Delete(key string) error
 }
 
@@ -72,7 +75,7 @@ func (s *Service) SendMessage(userID, sessionID uint, content string) (*Message,
 		return nil, err
 	}
 	if session.UserID != userID {
-		return nil, ErrUnauthorized
+		return nil, fmt.Errorf("未授权")
 	}
 
 	// 2. 检查消息数量限制（200条）
@@ -81,7 +84,7 @@ func (s *Service) SendMessage(userID, sessionID uint, content string) (*Message,
 		return nil, err
 	}
 	if count >= 200 {
-		return nil, ErrMessageTooMany
+		return nil, fmt.Errorf("消息数量过多")
 	}
 
 	// 3. 保存用户消息
@@ -150,7 +153,7 @@ func (s *Service) GetHistory(userID, sessionID uint, offset, limit int) (*Histor
 		return nil, err
 	}
 	if session.UserID != userID {
-		return nil, ErrUnauthorized
+		return nil, fmt.Errorf("未授权")
 	}
 
 	// 2. 获取消息列表
@@ -185,6 +188,58 @@ func (s *Service) GetHistory(userID, sessionID uint, offset, limit int) (*Histor
 	}, nil
 }
 
+// ListSessions 获取会话列表
+func (s *Service) ListSessions(userID uint, offset, limit int) ([]*Session, error) {
+	return s.repo.ListSessionsByUserID(userID, offset, limit)
+}
+
+// GetSession 获取会话详情
+func (s *Service) GetSession(userID, sessionID uint) (*Session, error) {
+	session, err := s.repo.FindSessionByID(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if session.UserID != userID {
+		return nil, fmt.Errorf("未授权")
+	}
+	return session, nil
+}
+
+// UpdateSession 更新会话
+func (s *Service) UpdateSession(userID, sessionID uint, title string) (*Session, error) {
+	// 验证会话
+	session, err := s.repo.FindSessionByID(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if session.UserID != userID {
+		return nil, fmt.Errorf("未授权")
+	}
+
+	// 更新标题
+	session.Title = title
+	if err := s.repo.UpdateSession(session); err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+
+// DeleteSession 删除会话
+func (s *Service) DeleteSession(userID, sessionID uint) error {
+	// 验证会话
+	session, err := s.repo.FindSessionByID(sessionID)
+	if err != nil {
+		return err
+	}
+	if session.UserID != userID {
+		return fmt.Errorf("未授权")
+	}
+
+	// 删除会话（级联删除消息）
+	return s.repo.DeleteSession(sessionID)
+}
+
 // RecallMessages 撤回消息（用户撤回自己的问题+AI的回答）
 func (s *Service) RecallMessages(userID, sessionID uint, messageIDs []uint) error {
 	// 1. 验证会话
@@ -193,14 +248,9 @@ func (s *Service) RecallMessages(userID, sessionID uint, messageIDs []uint) erro
 		return err
 	}
 	if session.UserID != userID {
-		return ErrUnauthorized
+		return fmt.Errorf("未授权")
 	}
 
 	// 2. 删除消息
 	return s.repo.DeleteMessages(sessionID, messageIDs)
-}
-
-// ListSessions 获取用户的会话列表
-func (s *Service) ListSessions(userID uint, offset, limit int) ([]*Session, error) {
-	return s.repo.ListSessionsByUserID(userID, offset, limit)
 }

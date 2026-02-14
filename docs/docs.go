@@ -15,64 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/chat/history": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "聊天"
-                ],
-                "summary": "获取聊天历史",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "会话ID",
-                        "name": "session_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "偏移量",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "每页数量",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/chat.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/chat.HistoryResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/recall": {
+        "/api/chat/messages/{id}": {
             "delete": {
                 "consumes": [
                     "application/json"
@@ -87,74 +30,17 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "会话ID",
-                        "name": "session_id",
-                        "in": "query",
+                        "description": "消息ID",
+                        "name": "id",
+                        "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "消息ID列表",
-                        "name": "message_ids",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
-                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/chat.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/chat/send": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "聊天"
-                ],
-                "summary": "发送消息",
-                "parameters": [
-                    {
-                        "description": "请求体",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/chat.SendMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/chat.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/chat.MessageVO"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -191,7 +77,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/chat.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
@@ -208,9 +94,7 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/api/chat/start": {
+            },
             "post": {
                 "consumes": [
                     "application/json"
@@ -221,7 +105,7 @@ const docTemplate = `{
                 "tags": [
                     "聊天"
                 ],
-                "summary": "开始新对话",
+                "summary": "创建新会话",
                 "parameters": [
                     {
                         "description": "请求体",
@@ -239,13 +123,236 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/chat.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/chat.SessionVO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chat/sessions/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "获取会话详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "会话ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chat.SessionVO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "更新会话",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "会话ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "请求体",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.UpdateSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chat.SessionVO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "删除会话",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "会话ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/chat/sessions/{id}/messages": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "获取消息历史",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "会话ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "偏移量",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "每页数量",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chat.HistoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "发送消息",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "会话ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "请求体",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.SendMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/chat.MessageVO"
                                         }
                                     }
                                 }
@@ -289,13 +396,98 @@ const docTemplate = `{
                     "400": {
                         "description": "参数错误",
                         "schema": {
-                            "$ref": "#/definitions/user.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "用户名或密码错误",
                         "schema": {
-                            "$ref": "#/definitions/user.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/rankings": {
+            "post": {
+                "description": "更新当前登录用户的指定排行榜分数，只在新分数更高时更新",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ranking"
+                ],
+                "summary": "更新排行榜分数",
+                "parameters": [
+                    {
+                        "description": "更新分数请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ranking.UpdateScoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/ranking.UpdateScoreResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "删除当前登录用户的所有排行榜记录",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ranking"
+                ],
+                "summary": "删除所有排行榜记录",
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -303,12 +495,12 @@ const docTemplate = `{
         },
         "/api/rankings/{rank_type}": {
             "get": {
-                "description": "获取指定类型的用户排行榜，按分数降序排列，支持分页查询",
+                "description": "获取指定类型的排行榜，按分数降序排列，支持分页查询",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "user"
+                    "ranking"
                 ],
                 "summary": "获取排行榜",
                 "parameters": [
@@ -336,19 +528,67 @@ const docTemplate = `{
                     "200": {
                         "description": "排行榜数据",
                         "schema": {
-                            "$ref": "#/definitions/user.RankingListResponse"
+                            "$ref": "#/definitions/ranking.RankingListResponse"
                         }
                     },
                     "400": {
                         "description": "排行榜类型无效",
                         "schema": {
-                            "$ref": "#/definitions/user.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "服务器错误",
                         "schema": {
-                            "$ref": "#/definitions/user.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "删除当前登录用户的指定类型排行榜记录",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ranking"
+                ],
+                "summary": "删除指定类型排行榜记录",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "排行榜类型(1-9)",
+                        "name": "rank_type",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "未认证",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -388,13 +628,13 @@ const docTemplate = `{
                     "400": {
                         "description": "参数错误或用户名已存在",
                         "schema": {
-                            "$ref": "#/definitions/user.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "服务器错误",
                         "schema": {
-                            "$ref": "#/definitions/user.ErrorResponse"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -426,7 +666,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/savegame.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
@@ -469,7 +709,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/savegame.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
@@ -507,7 +747,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/savegame.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -528,7 +768,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/savegame.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
@@ -539,63 +779,6 @@ const docTemplate = `{
                                     }
                                 }
                             ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/user/score": {
-            "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "更新当前登录用户的指定排行榜分数，分数更新后排行榜缓存将被清除",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user"
-                ],
-                "summary": "更新用户分数",
-                "parameters": [
-                    {
-                        "description": "分数信息",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/user.UpdateScoreRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "更新成功",
-                        "schema": {
-                            "$ref": "#/definitions/user.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/user.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "未授权",
-                        "schema": {
-                            "$ref": "#/definitions/user.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器错误",
-                        "schema": {
-                            "$ref": "#/definitions/user.ErrorResponse"
                         }
                     }
                 }
@@ -643,32 +826,15 @@ const docTemplate = `{
                 }
             }
         },
-        "chat.Response": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {},
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
         "chat.SendMessageRequest": {
             "type": "object",
             "required": [
-                "content",
-                "session_id"
+                "content"
             ],
             "properties": {
                 "content": {
                     "type": "string",
                     "example": "你好"
-                },
-                "session_id": {
-                    "type": "integer",
-                    "example": 1
                 }
             }
         },
@@ -699,10 +865,141 @@ const docTemplate = `{
         },
         "chat.StartRequest": {
             "type": "object",
+            "required": [
+                "title"
+            ],
             "properties": {
                 "title": {
                     "type": "string",
                     "example": "新对话"
+                }
+            }
+        },
+        "chat.UpdateSessionRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "example": "更新的标题"
+                }
+            }
+        },
+        "ranking.RankingItem": {
+            "type": "object",
+            "properties": {
+                "rank": {
+                    "description": "排名",
+                    "type": "integer",
+                    "example": 1
+                },
+                "score": {
+                    "description": "分数",
+                    "type": "integer",
+                    "example": 100
+                },
+                "updated_at": {
+                    "description": "更新时间",
+                    "type": "string",
+                    "example": "2023-12-20T10:00:00Z"
+                },
+                "user_id": {
+                    "description": "用户ID",
+                    "type": "integer",
+                    "example": 1
+                },
+                "username": {
+                    "description": "用户名",
+                    "type": "string",
+                    "example": "player1"
+                }
+            }
+        },
+        "ranking.RankingListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "description": "每页数量",
+                    "type": "integer",
+                    "example": 10
+                },
+                "page": {
+                    "description": "当前页",
+                    "type": "integer",
+                    "example": 1
+                },
+                "rank_type": {
+                    "description": "排行榜类型",
+                    "type": "integer",
+                    "example": 1
+                },
+                "rankings": {
+                    "description": "排行榜数据",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ranking.RankingItem"
+                    }
+                }
+            }
+        },
+        "ranking.UpdateScoreRequest": {
+            "type": "object",
+            "required": [
+                "rank_type",
+                "score"
+            ],
+            "properties": {
+                "rank_type": {
+                    "description": "排行榜类型1-9",
+                    "type": "integer",
+                    "maximum": 9,
+                    "minimum": 1,
+                    "example": 1
+                },
+                "score": {
+                    "description": "分数",
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 100
+                }
+            }
+        },
+        "ranking.UpdateScoreResponse": {
+            "type": "object",
+            "properties": {
+                "rank_type": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "score": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2023-12-20T10:00:00Z"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "response.Response": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "业务错误码",
+                    "type": "integer"
+                },
+                "data": {
+                    "description": "响应数据（可选）"
+                },
+                "message": {
+                    "description": "错误消息",
+                    "type": "string"
                 }
             }
         },
@@ -722,18 +1019,6 @@ const docTemplate = `{
                     "maximum": 6,
                     "minimum": 1,
                     "example": 1
-                }
-            }
-        },
-        "savegame.Response": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {},
-                "msg": {
-                    "type": "string"
                 }
             }
         },
@@ -773,15 +1058,6 @@ const docTemplate = `{
                 }
             }
         },
-        "user.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string",
-                    "example": "invalid request"
-                }
-            }
-        },
         "user.LoginRequest": {
             "type": "object",
             "required": [
@@ -808,46 +1084,6 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/user.UserVO"
-                }
-            }
-        },
-        "user.RankingItem": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "rank": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "score": {
-                    "type": "integer",
-                    "example": 1000
-                },
-                "username": {
-                    "type": "string",
-                    "example": "player1"
-                }
-            }
-        },
-        "user.RankingListResponse": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "page": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "rankings": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/user.RankingItem"
-                    }
                 }
             }
         },
@@ -885,36 +1121,6 @@ const docTemplate = `{
                 }
             }
         },
-        "user.SuccessResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "user.UpdateScoreRequest": {
-            "type": "object",
-            "required": [
-                "rank_type"
-            ],
-            "properties": {
-                "rank_type": {
-                    "description": "排行榜类型1-9",
-                    "type": "integer",
-                    "maximum": 9,
-                    "minimum": 1,
-                    "example": 1
-                },
-                "score": {
-                    "description": "分数",
-                    "type": "integer",
-                    "minimum": 0,
-                    "example": 100
-                }
-            }
-        },
         "user.UserVO": {
             "type": "object",
             "properties": {
@@ -937,8 +1143,8 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "faulty_in_culture API",
-	Description:      "",
+	Title:            "Faulty In Culture API",
+	Description:      "游戏后端API服务 - 提供用户认证、排行榜、AI聊天、存档管理功能",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

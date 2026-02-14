@@ -1,3 +1,5 @@
+// Package user - 用户模块数据传输对象
+// 功能：定义API请求和响应的数据结构
 package user
 
 // ============================================================
@@ -17,12 +19,6 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required" example:"password123"`
 }
 
-// UpdateScoreRequest 更新分数请求
-type UpdateScoreRequest struct {
-	RankType int `json:"rank_type" binding:"required,min=1,max=9" example:"1"` // 排行榜类型1-9
-	Score    int `json:"score" binding:"min=0" example:"100"`                  // 分数
-}
-
 // ============================================================
 // 响应VO (Value Objects)
 // 设计模式：值对象模式 - 不可变的数据对象，用于API响应
@@ -34,40 +30,8 @@ type UserVO struct {
 	Username string `json:"username" example:"player1"`
 }
 
-// RegisterResponse 注册响应
-type RegisterResponse struct {
-	ID       uint   `json:"id" example:"1"`
-	Username string `json:"username" example:"player1"`
-	Token    string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-}
-
-// LoginResponse 登录响应
-type LoginResponse struct {
+// AuthResponse 统一认证响应（注册和登录）
+type AuthResponse struct {
 	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 	User  UserVO `json:"user"`
-}
-
-// RankingItem 排名项
-type RankingItem struct {
-	ID       uint   `json:"id" example:"1"`
-	Username string `json:"username" example:"player1"`
-	Score    int    `json:"score" example:"1000"`
-	Rank     int    `json:"rank" example:"1"`
-}
-
-// RankingListResponse 排名列表响应
-type RankingListResponse struct {
-	Page     int           `json:"page" example:"1"`
-	Limit    int           `json:"limit" example:"10"`
-	Rankings []RankingItem `json:"rankings"`
-}
-
-// SuccessResponse 通用成功响应
-type SuccessResponse struct {
-	Message string `json:"message" example:"success"`
-}
-
-// ErrorResponse 通用错误响应
-type ErrorResponse struct {
-	Error string `json:"error" example:"invalid request"`
 }

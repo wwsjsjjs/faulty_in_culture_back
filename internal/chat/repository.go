@@ -1,6 +1,11 @@
+﻿// Package chat - AI聊天模块数据访问层
+// 功能：封装会话和消息的CRUD操作
+// 设计模式：Repository模式
 package chat
 
 import (
+	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -10,6 +15,7 @@ type Repository interface {
 	CreateSession(session *Session) error
 	FindSessionByID(id uint) (*Session, error)
 	ListSessionsByUserID(userID uint, offset, limit int) ([]*Session, error)
+	UpdateSession(session *Session) error
 	DeleteSession(id uint) error
 
 	// Message相关
@@ -40,7 +46,7 @@ func (r *repositoryImpl) FindSessionByID(id uint) (*Session, error) {
 	err := r.db.First(&session, id).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, ErrSessionNotFound
+			return nil, fmt.Errorf("会话不存在")
 		}
 		return nil, err
 	}
@@ -56,6 +62,11 @@ func (r *repositoryImpl) ListSessionsByUserID(userID uint, offset, limit int) ([
 		Limit(limit).
 		Find(&sessions).Error
 	return sessions, err
+}
+
+// UpdateSession 更新会话
+func (r *repositoryImpl) UpdateSession(session *Session) error {
+	return r.db.Save(session).Error
 }
 
 // DeleteSession 删除会话（软删除）

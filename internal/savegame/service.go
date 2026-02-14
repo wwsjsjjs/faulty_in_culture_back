@@ -1,6 +1,12 @@
+﻿// Package savegame - 存档模块业务逻辑层
+// 功能：实现存档的业务规则
+// 特点：支持6个槽位，创建/更新/删除/查询
 package savegame
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // ============================================================
 // Service层 - 业务逻辑层
@@ -23,7 +29,7 @@ func NewService(repo Repository) *Service {
 // QueryBySlot 查询指定槽位的存档
 func (s *Service) QueryBySlot(userID uint, slotNumber int) (*Entity, error) {
 	if slotNumber < 1 || slotNumber > 6 {
-		return nil, ErrInvalidSlotNumber
+		return nil, fmt.Errorf("槽位号无效")
 	}
 	return s.repo.FindByUserIDAndSlot(userID, slotNumber)
 }
@@ -36,7 +42,7 @@ func (s *Service) QueryAll(userID uint) ([]*Entity, error) {
 // CreateOrUpdate 创建或更新存档
 func (s *Service) CreateOrUpdate(userID uint, slotNumber int, gameData string) (*Entity, error) {
 	if slotNumber < 1 || slotNumber > 6 {
-		return nil, ErrInvalidSlotNumber
+		return nil, fmt.Errorf("槽位号无效")
 	}
 
 	save := &Entity{
@@ -53,7 +59,7 @@ func (s *Service) CreateOrUpdate(userID uint, slotNumber int, gameData string) (
 // Delete 删除存档
 func (s *Service) Delete(userID uint, slotNumber int) error {
 	if slotNumber < 1 || slotNumber > 6 {
-		return ErrInvalidSlotNumber
+		return fmt.Errorf("槽位号无效")
 	}
 	return s.repo.Delete(userID, slotNumber)
 }

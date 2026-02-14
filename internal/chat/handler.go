@@ -1,27 +1,17 @@
+﻿// Package chat - AI聊天模块HTTP处理层
+// 功能：处理聊天相关的HTTP请求
+// 架构：MVC中的Controller层，提供RESTful API
 package chat
 
 import (
+	errcode "faulty_in_culture/go_back/internal/shared/errors"
+	"faulty_in_culture/go_back/internal/shared/response"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
-
-// ============================================================
-// Handler层 - MVC的Controller
-// 职责：
-// 1. 接收HTTP请求
-// 2. 参数验证和转换
-// 3. 调用Service处理业务逻辑
-// 4. 返回HTTP响应
-// ============================================================
-
-// Response 通用响应结构
-type Response struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data,omitempty"`
-}
 
 // Handler 聊天处理器
 type Handler struct {
@@ -33,66 +23,197 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// StartChat 开始新对话
-// @Summary 开始新对话
-// @Tags 聊天
-// @Accept json
-// @Produce json
-// @Param request body StartRequest true "请求体"
-// @Success 200 {object} Response{data=SessionVO}
-// @Router /api/chat/start [post]
-func (h *Handler) StartChat(c *gin.Context) {
-	userID := c.GetUint("user_id") // 从中间件获取
-
-	var req StartRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "参数错误"})
-		return
-	}
-
-	session, err := h.service.StartChat(userID, req.Title)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, Response{Code: 500, Msg: err.Error()})
-		return
-	}
-
-	vo := SessionVO{
+// toSessionVO 转换Session为SessionVO
+func toSessionVO(session *Session) SessionVO {
+	return SessionVO{
 		ID:        session.ID,
 		UserID:    session.UserID,
 		Title:     session.Title,
 		Type:      session.Type,
 		CreatedAt: session.CreatedAt,
 	}
-
-	c.JSON(http.StatusOK, Response{Code: 0, Msg: "success", Data: vo})
 }
 
-// SendMessage 发送消息（异步）
+// handleSessionError 统一处理会话错误
+func handleSessionError(c *gin.Context, err error) {
+	if strings.Contains(err.Error(), "会话不存在") {
+		response.Error(c, http.StatusNotFound, errcode.SessionNotFound)
+	} else if strings.Contains(err.Error(), "未授权") {
+		response.Error(c, http.StatusForbidden, errcode.Unauthorized)
+	} else {
+		response.Error(c, http.StatusInternalServerError, errcode.ServerError)
+	}
+}
+
+// StartChat 创建新会话
+// @Summary 创建新会话
+// @Tags 聊天
+// @Accept json
+// @Produce json
+// @Param request body StartRequest true "请求体"
+// @Success 200 {object} response.Response{data=SessionVO}
+// @Router /api/chat/sessions [post]
+func (h *Handler) StartChat(c *gin.Context) {
+	userID := c.GetUint("user_id") // 从中间件获取
+
+	var req StartRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
+		return
+	}
+
+	session, err := h.service.StartChat(userID, req.Title)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, errcode.ServerError)
+		return
+	}
+
+	response.Success(c, toSessionVO(session))
+}
+
+// ListSessions 获取会话列表
+// @Summary 获取会话列表
+// @Tags 聊天
+// @Produce json
+// @Param offset query int false "偏移量" default(0)
+// @Param limit query int false "每页数量" default(20)
+// @Success 200 {object} response.Response{data=[]SessionVO}
+// @Router /api/chat/sessions [get]
+func (h *Handler) ListSessions(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	sessions, err := h.service.ListSessions(userID, offset, limit)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, errcode.ServerError)
+		return
+	}
+
+	vos := make([]SessionVO, len(sessions))
+	for i, s := range sessions {
+		vos[i] = toSessionVO(s)
+	}
+
+	response.Success(c, vos)
+}
+
+// GetSession 获取会话详情
+// @Summary 获取会话详情
+// @Tags 聊天
+// @Produce json
+// @Param id path int true "会话ID"
+// @Success 200 {object} response.Response{data=SessionVO}
+// @Router /api/chat/sessions/{id} [get]
+func (h *Handler) GetSession(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	sessionID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+
+	if sessionID == 0 {
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
+		return
+	}
+
+	session, err := h.service.GetSession(userID, uint(sessionID))
+	if err != nil {
+		handleSessionError(c, err)
+		return
+	}
+
+	response.Success(c, toSessionVO(session))
+}
+
+// UpdateSession 更新会话
+// @Summary 更新会话
+// @Tags 聊天
+// @Accept json
+// @Produce json
+// @Param id path int true "会话ID"
+// @Param request body UpdateSessionRequest true "请求体"
+// @Success 200 {object} response.Response{data=SessionVO}
+// @Router /api/chat/sessions/{id} [put]
+func (h *Handler) UpdateSession(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	sessionID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+
+	if sessionID == 0 {
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
+		return
+	}
+
+	var req UpdateSessionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
+		return
+	}
+
+	session, err := h.service.UpdateSession(userID, uint(sessionID), req.Title)
+	if err != nil {
+		handleSessionError(c, err)
+		return
+	}
+
+	response.Success(c, toSessionVO(session))
+}
+
+// DeleteSession 删除会话
+// @Summary 删除会话
+// @Tags 聊天
+// @Produce json
+// @Param id path int true "会话ID"
+// @Success 200 {object} response.Response
+// @Router /api/chat/sessions/{id} [delete]
+func (h *Handler) DeleteSession(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	sessionID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+
+	if sessionID == 0 {
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
+		return
+	}
+
+	err := h.service.DeleteSession(userID, uint(sessionID))
+	if err != nil {
+		handleSessionError(c, err)
+		return
+	}
+
+	response.SuccessWithMessage(c, "删除成功", nil)
+}
+
+// SendMessage 发送消息
 // @Summary 发送消息
 // @Tags 聊天
 // @Accept json
 // @Produce json
+// @Param id path int true "会话ID"
 // @Param request body SendMessageRequest true "请求体"
-// @Success 200 {object} Response{data=MessageVO}
-// @Router /api/chat/send [post]
+// @Success 200 {object} response.Response{data=MessageVO}
+// @Router /api/chat/sessions/{id}/messages [post]
 func (h *Handler) SendMessage(c *gin.Context) {
 	userID := c.GetUint("user_id")
+	sessionID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
-	var req SendMessageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "参数错误"})
+	if sessionID == 0 {
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
 		return
 	}
 
-	message, err := h.service.SendMessage(userID, req.SessionID, req.Content)
+	var req SendMessageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
+		return
+	}
+
+	message, err := h.service.SendMessage(userID, uint(sessionID), req.Content)
 	if err != nil {
-		code := 500
-		if err == ErrUnauthorized {
-			code = 403
-		} else if err == ErrMessageTooMany {
-			code = 400
+		if strings.Contains(err.Error(), "未授权") {
+			response.Error(c, http.StatusForbidden, errcode.Unauthorized)
+		} else if strings.Contains(err.Error(), "消息") {
+			response.Error(c, http.StatusBadRequest, errcode.MessageTooLong)
+		} else {
+			response.Error(c, http.StatusInternalServerError, errcode.ServerError)
 		}
-		c.JSON(code, Response{Code: code, Msg: err.Error()})
 		return
 	}
 
@@ -103,44 +224,38 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		CreatedAt: message.CreatedAt,
 	}
 
-	c.JSON(http.StatusOK, Response{Code: 0, Msg: "已发送，AI正在思考...", Data: vo})
+	response.SuccessWithMessage(c, "已发送，AI正在思考..", vo)
 }
 
-// GetHistory 获取聊天历史
-// @Summary 获取聊天历史
+// GetHistory 获取消息历史
+// @Summary 获取消息历史
 // @Tags 聊天
 // @Accept json
 // @Produce json
-// @Param session_id query int true "会话ID"
+// @Param id path int true "会话ID"
 // @Param offset query int false "偏移量" default(0)
 // @Param limit query int false "每页数量" default(50)
-// @Success 200 {object} Response{data=HistoryResponse}
-// @Router /api/chat/history [get]
+// @Success 200 {object} response.Response{data=HistoryResponse}
+// @Router /api/chat/sessions/{id}/messages [get]
 func (h *Handler) GetHistory(c *gin.Context) {
 	userID := c.GetUint("user_id")
+	sessionID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
-	sessionID, _ := strconv.ParseUint(c.Query("session_id"), 10, 64)
+	if sessionID == 0 {
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
+		return
+	}
+
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 
-	if sessionID == 0 {
-		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "缺少session_id参数"})
-		return
-	}
-
 	history, err := h.service.GetHistory(userID, uint(sessionID), offset, limit)
 	if err != nil {
-		code := 500
-		if err == ErrSessionNotFound {
-			code = 404
-		} else if err == ErrUnauthorized {
-			code = 403
-		}
-		c.JSON(code, Response{Code: code, Msg: err.Error()})
+		handleSessionError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{Code: 0, Msg: "success", Data: history})
+	response.Success(c, history)
 }
 
 // RecallMessages 撤回消息
@@ -148,67 +263,36 @@ func (h *Handler) GetHistory(c *gin.Context) {
 // @Tags 聊天
 // @Accept json
 // @Produce json
-// @Param session_id query int true "会话ID"
-// @Param message_ids body []uint true "消息ID列表"
-// @Success 200 {object} Response
-// @Router /api/chat/recall [delete]
+// @Param id path int true "消息ID"
+// @Success 200 {object} response.Response
+// @Router /api/chat/messages/{id} [delete]
 func (h *Handler) RecallMessages(c *gin.Context) {
 	userID := c.GetUint("user_id")
+	messageID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+
+	if messageID == 0 {
+		response.Error(c, http.StatusBadRequest, errcode.InvalidParams)
+		return
+	}
+
+	// 注意：这里简化处理，实际应该从消息获取session_id
+	// 为了保持简单，我们修改为通过query传递session_id
 	sessionID, _ := strconv.ParseUint(c.Query("session_id"), 10, 64)
-
-	var messageIDs []uint
-	if err := c.ShouldBindJSON(&messageIDs); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "参数错误"})
+	if sessionID == 0 {
+		response.ErrorWithMessage(c, http.StatusBadRequest, errcode.InvalidParams, "缺少session_id参数")
 		return
 	}
 
-	if sessionID == 0 || len(messageIDs) == 0 {
-		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "参数错误"})
-		return
-	}
-
+	messageIDs := []uint{uint(messageID)}
 	err := h.service.RecallMessages(userID, uint(sessionID), messageIDs)
 	if err != nil {
-		code := 500
-		if err == ErrUnauthorized {
-			code = 403
+		if strings.Contains(err.Error(), "未授权") {
+			response.Error(c, http.StatusForbidden, errcode.Unauthorized)
+		} else {
+			response.Error(c, http.StatusInternalServerError, errcode.ServerError)
 		}
-		c.JSON(code, Response{Code: code, Msg: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{Code: 0, Msg: "撤回成功"})
-}
-
-// ListSessions 获取会话列表
-// @Summary 获取会话列表
-// @Tags 聊天
-// @Produce json
-// @Param offset query int false "偏移量" default(0)
-// @Param limit query int false "每页数量" default(20)
-// @Success 200 {object} Response{data=[]SessionVO}
-// @Router /api/chat/sessions [get]
-func (h *Handler) ListSessions(c *gin.Context) {
-	userID := c.GetUint("user_id")
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-
-	sessions, err := h.service.ListSessions(userID, offset, limit)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, Response{Code: 500, Msg: err.Error()})
-		return
-	}
-
-	vos := make([]SessionVO, len(sessions))
-	for i, s := range sessions {
-		vos[i] = SessionVO{
-			ID:        s.ID,
-			UserID:    s.UserID,
-			Title:     s.Title,
-			Type:      s.Type,
-			CreatedAt: s.CreatedAt,
-		}
-	}
-
-	c.JSON(http.StatusOK, Response{Code: 0, Msg: "success", Data: vos})
+	response.SuccessWithMessage(c, "撤回成功", nil)
 }

@@ -1,17 +1,22 @@
+// Package middleware - 中间件模块
+// 功能：提供HTTP请求的认证、授权等中间件
+// 特点：JWT Token验证、用户身份识别
 package middleware
 
 import (
 	"net/http"
 	"strings"
 
-	"faulty_in_culture/go_back/internal/shared/infra/logger"
-	"faulty_in_culture/go_back/internal/shared/pkg/security"
+	"faulty_in_culture/go_back/internal/infra/logger"
+	"faulty_in_culture/go_back/internal/shared/security"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-// AuthMiddleware 用户认证中间件（使用 JWT 框架验证）
+// AuthMiddleware 用户认证中间件
+// 功能：验证JWT Token，提取用户信息并注入到上下文
+// 使用：在需要认证的路由组中使用此中间件
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Info("middleware.AuthMiddleware",
