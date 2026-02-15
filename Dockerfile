@@ -1,39 +1,9 @@
 # ===================================
-# 多阶段构建 Dockerfile
-# Stage 1: 构建阶段
-# Stage 2: 运行阶段（轻量镜像）
+# Dockerfile
+# 使用本地交叉编译的二进制文件
+# 快速构建 Docker 镜像（无需编译）
 # ===================================
 
-# Stage 1: 构建
-FROM golang:1.25-alpine AS builder
-
-# 设置工作目录
-WORKDIR /app
-
-# 设置 Go 代理加速（国内推荐使用 goproxy.cn）
-ENV GO111MODULE=on \
-    GOPROXY=https://goproxy.cn,direct
-
-# 在 Alpine 中编译需要 build-base，但不需要 git 和 ca-certificates
-RUN apk add --no-cache build-base
-
-# 复制 go.mod 和 go.sum（利用Docker缓存层）
-COPY go.mod go.sum ./
-
-# 下载依赖
-RUN go mod download
-
-# 复制源代码
-COPY . .
-
-# 编译（CGO_ENABLED=0 生成静态链接的二进制文件）
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
-    -o /app/server \
-    ./cmd/server/main.go
-
-# ===================================
-# Stage 2: 运行
 FROM alpine:latest
 
 # 安装运行时依赖（最小化）
@@ -48,9 +18,10 @@ RUN addgroup -g 1000 appuser && \
 
 WORKDIR /app
 
-# 从构建阶段复制二进制文件
-COPY --from=builder /app/server .
+# 直接复制预编译的二进制文件（本地交叉编译的产物）
+COPY server .
 
+# 复制生产配置
 COPY config.prod.yaml ./config.yaml
 
 # 暴露端口
