@@ -49,6 +49,8 @@ func SetupRoutes(router *gin.Engine, h *Handlers) {
 		}
 
 		// ========== 聊天模块（需要认证）==========
+		// WebSocket实时消息流（使用支持query参数的认证中间件，因为浏览器WebSocket API不支持自定义headers）
+		api.GET("/chat/ws", middleware.AuthMiddlewareWithQuery(), h.Chat.WebSocketHandler)
 		chatGroup := api.Group("/chat")
 		chatGroup.Use(middleware.AuthMiddleware())
 		{

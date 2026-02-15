@@ -19,11 +19,11 @@ services:
       MYSQL_USER: ${DB_USER:-culture_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-your-secure-password}
       TZ: Asia/Shanghai
-    ports:
-      - "3306:3306"  # 仅用于调试，生产环境可以注释掉
+    # 生产环境：MySQL只在内部网络访问，不对外暴露端口
+    # ports:
+    #   - "3306:3306"  # 开发调试时取消注释
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # 可选：初始化SQL脚本
     networks:
       - app_network
     command: 
@@ -43,8 +43,9 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
-    ports:
-      - "6379:6379"  # 仅用于调试，生产环境可以注释掉
+    # 生产环境：Redis只在内部网络访问，不对外暴露端口
+    # ports:
+    #   - "6379:6379"  # 开发调试时取消注释
     volumes:
       - redis_data:/data
     networks:

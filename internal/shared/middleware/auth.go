@@ -1,6 +1,3 @@
-// Package middleware - 中间件模块
-// 功能：提供HTTP请求的认证、授权等中间件
-// 特点：JWT Token验证、用户身份识别
 package middleware
 
 import (
@@ -14,9 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// AuthMiddleware 用户认证中间件
-// 功能：验证JWT Token，提取用户信息并注入到上下文
-// 使用：在需要认证的路由组中使用此中间件
+// AuthMiddleware 用户认证中间件（使用 JWT 框架验证）
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Info("middleware.AuthMiddleware",
@@ -80,4 +75,65 @@ func GetUserID(c *gin.Context) (uint, bool) {
 		return 0, false
 	}
 	return userID.(uint), true
+}
+
+// AuthMiddlewareWithQuery 支持query参数的认证中间件
+// 用于WebSocket等无法设置自定义headers的场景
+// 优先从Authorization header读取，如果没有则从query参数读取
+func AuthMiddlewareWithQuery() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var tokenString string
+
+		// 1. 优先从Authorization Header获取token
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
+		}
+
+		// 2. 如果header中没有，尝试从query参数获取
+		if tokenString == "" {
+			tokenString = c.Query("token")
+		}
+
+		// 3. 验证token是否存在
+		if tokenString == "" {
+			logger.Warn("middleware.AuthMiddlewareWithQuery: 未提供 token",
+				zap.String("path", c.Request.URL.Path),
+			)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录或未提供 token"})
+			c.Abort()
+			return
+		}
+
+		// 4. 解析和验证Token
+		claims, err := security.ParseToken(tokenString)
+		if err != nil {
+			logger.Error("middleware.AuthMiddlewareWithQuery: token 验证失败",
+				zap.Error(err),
+			)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token 无效或已过期"})
+			c.Abort()
+			return
+		}
+
+		// 5. 将用户信息设置到上下文中
+		c.Set("user_id", claims.UserID)
+		c.Set("username", claims.Username)
+
+		logger.Info("middleware.AuthMiddlewareWithQuery: 认证成功",
+			zap.Uint("user_id", claims.UserID),
+			zap.String("username", claims.Username),
+			zap.String("source", func() string {
+				if authHeader != "" {
+					return "header"
+				}
+				return "query"
+			}()),
+		)
+
+		c.Next()
+	}
 }

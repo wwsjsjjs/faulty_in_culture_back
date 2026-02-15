@@ -195,6 +195,14 @@ definitions:
         example: 1
         type: integer
     type: object
+  user.AuthResponse:
+    properties:
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      user:
+        $ref: '#/definitions/user.UserVO'
+    type: object
   user.LoginRequest:
     properties:
       password:
@@ -207,14 +215,6 @@ definitions:
     - password
     - username
     type: object
-  user.LoginResponse:
-    properties:
-      token:
-        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-        type: string
-      user:
-        $ref: '#/definitions/user.UserVO'
-    type: object
   user.RegisterRequest:
     properties:
       password:
@@ -226,18 +226,6 @@ definitions:
     required:
     - password
     - username
-    type: object
-  user.RegisterResponse:
-    properties:
-      id:
-        example: 1
-        type: integer
-      token:
-        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-        type: string
-      username:
-        example: player1
-        type: string
     type: object
   user.UserVO:
     properties:
@@ -465,6 +453,14 @@ paths:
       summary: 发送消息
       tags:
       - 聊天
+  /api/chat/ws:
+    get:
+      responses:
+        "101":
+          description: Switching Protocols
+      summary: WebSocket实时消息流
+      tags:
+      - 聊天
   /api/login:
     post:
       consumes:
@@ -483,7 +479,7 @@ paths:
         "200":
           description: 登录成功，返回token和用户信息
           schema:
-            $ref: '#/definitions/user.LoginResponse'
+            $ref: '#/definitions/user.AuthResponse'
         "400":
           description: 参数错误
           schema:
@@ -636,7 +632,7 @@ paths:
         "200":
           description: 注册成功，返回用户信息和token
           schema:
-            $ref: '#/definitions/user.RegisterResponse'
+            $ref: '#/definitions/user.AuthResponse'
         "400":
           description: 参数错误或用户名已存在
           schema:

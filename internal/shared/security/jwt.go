@@ -30,7 +30,12 @@ func HashPassword(password string) (string, error) {
 
 // CheckPassword 密码验证（使用 bcrypt 框架）
 func CheckPassword(password, hash string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil {
+		// 密码不匹配
+		return false
+	}
+	return true
 }
 
 // GenerateToken 生成 JWT Token（使用 golang-jwt 框架）

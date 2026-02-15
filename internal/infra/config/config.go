@@ -1,11 +1,10 @@
 package config
 
 import (
-	"faulty_in_culture/go_back/internal/infra/logger"
+	"fmt"
 	"os"
 	"strconv"
 
-	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -71,19 +70,20 @@ type Config struct {
 var GlobalConfig Config
 
 // LoadConfig 加载配置文件
-func LoadConfig(path string) {
+func LoadConfig(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
-		logger.Error("failed to open config file", zap.Error(err))
+		return fmt.Errorf("打开配置文件失败: %w", err)
 	}
 	defer f.Close()
 	decoder := yaml.NewDecoder(f)
 	if err := decoder.Decode(&GlobalConfig); err != nil {
-		logger.Error("failed to decode config file", zap.Error(err))
+		return fmt.Errorf("解析配置文件失败: %w", err)
 	}
 
 	// 使用环境变量覆盖配置（Docker部署时优先使用环境变量）
 	overrideWithEnv()
+	return nil
 }
 
 // overrideWithEnv 使用环境变量覆盖配置
@@ -141,9 +141,4 @@ func overrideWithEnv() {
 	if v := os.Getenv("LOG_MODE"); v != "" {
 		GlobalConfig.App.LogMode = v
 	}
-
-	logger.Info("配置加载完成",
-		zap.String("environment", GlobalConfig.App.Environment),
-		zap.String("db_host", GlobalConfig.Database.Host),
-		zap.String("redis_host", GlobalConfig.Redis.Host))
 }

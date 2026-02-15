@@ -6,6 +6,9 @@ package ranking
 import (
 	"fmt"
 	"time"
+
+	"faulty_in_culture/go_back/internal/infra/logger"
+	"go.uber.org/zap"
 )
 
 // ============================================================
@@ -50,27 +53,53 @@ func NewService(repo Repository, userService UserService, cache Cache) *Service 
 
 // UpdateScore 更新用户分数（只在新分数更高时更新）
 func (s *Service) UpdateScore(userID uint, rankType, score int) (*Entity, error) {
+	logger.Info("[ranking.UpdateScore] 开始更新分数",
+		zap.Uint("user_id", userID),
+		zap.Int("rank_type", rankType),
+		zap.Int("score", score))
+	
 	if !ValidateRankType(rankType) {
+		logger.Warn("[ranking.UpdateScore] 排行榜类型无效",
+			zap.Uint("user_id", userID),
+			zap.Int("rank_type", rankType))
 		return nil, fmt.Errorf("排行榜类型无效")
 	}
 	if score < 0 {
+		logger.Warn("[ranking.UpdateScore] 分数无效",
+			zap.Uint("user_id", userID),
+			zap.Int("score", score))
 		return nil, fmt.Errorf("分数无效")
 	}
 
 	ranking, err := s.repo.UpsertScore(userID, rankType, score)
 	if err != nil {
+		logger.Error("[ranking.UpdateScore] 更新分数失败",
+			zap.Uint("user_id", userID),
+			zap.Int("rank_type", rankType),
+			zap.Error(err))
 		return nil, fmt.Errorf("更新分数失败")
 	}
 
 	if s.cache != nil {
 		s.clearRankingCache(rankType)
 	}
+	
+	logger.Info("[ranking.UpdateScore] 分数更新成功",
+		zap.Uint("user_id", userID),
+		zap.Int("rank_type", rankType),
+		zap.Int("score", score))
 	return ranking, nil
 }
 
 // GetRankings 获取排行榜
 func (s *Service) GetRankings(rankType, page, limit int) ([]RankingItem, error) {
+	logger.Info("[ranking.GetRankings] 获取排行榜",
+		zap.Int("rank_type", rankType),
+		zap.Int("page", page),
+		zap.Int("limit", limit))
+	
 	if !ValidateRankType(rankType) {
+		logger.Warn("[ranking.GetRankings] 排行榜类型无效", zap.Int("rank_type", rankType))
 		return nil, fmt.Errorf("排行榜类型无效")
 	}
 
@@ -88,6 +117,9 @@ func (s *Service) GetRankings(rankType, page, limit int) ([]RankingItem, error) 
 	if s.cache != nil {
 		var cachedRankings []RankingItem
 		if err := s.cache.Get(cacheKey, &cachedRankings); err == nil && len(cachedRankings) > 0 {
+			logger.Debug("[ranking.GetRankings] 从缓存获取",
+				zap.Int("rank_type", rankType),
+				zap.Int("count", len(cachedRankings)))
 			return cachedRankings, nil
 		}
 	}
@@ -95,6 +127,9 @@ func (s *Service) GetRankings(rankType, page, limit int) ([]RankingItem, error) 
 	// 从数据库查询
 	rankings, err := s.repo.GetRankings(rankType, offset, limit)
 	if err != nil {
+		logger.Error("[ranking.GetRankings] 数据库查询失败",
+			zap.Int("rank_type", rankType),
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -135,28 +170,50 @@ func (s *Service) GetRankings(rankType, page, limit int) ([]RankingItem, error) 
 		s.cache.Set(cacheKey, items, 10*time.Minute)
 	}
 
+	logger.Info("[ranking.GetRankings] 成功获取排行榜",
+		zap.Int("rank_type", rankType),
+		zap.Int("page", page),
+		zap.Int("count", len(items)))
 	return items, nil
 }
 
 // DeleteRanking 删除指定类型的排行榜记录
 func (s *Service) DeleteRanking(userID uint, rankType int) error {
+	logger.Info("[ranking.DeleteRanking] 删除排行榜记录",
+		zap.Uint("user_id", userID),
+		zap.Int("rank_type", rankType))
+	
 	if !ValidateRankType(rankType) {
+		logger.Warn("[ranking.DeleteRanking] 排行榜类型无效",
+			zap.Uint("user_id", userID),
+			zap.Int("rank_type", rankType))
 		return fmt.Errorf("排行榜类型无效")
 	}
 
 	if err := s.repo.DeleteByUserAndType(userID, rankType); err != nil {
+		logger.Error("[ranking.DeleteRanking] 删除失败",
+			zap.Uint("user_id", userID),
+			zap.Int("rank_type", rankType),
+			zap.Error(err))
 		return err
 	}
 
 	if s.cache != nil {
 		s.clearRankingCache(rankType)
 	}
+	
+	logger.Info("[ranking.DeleteRanking] 删除成功",
+		zap.Uint("user_id", userID),
+		zap.Int("rank_type", rankType))
 	return nil
 }
 
 // DeleteAllRankings 删除用户的所有排行榜记录
 func (s *Service) DeleteAllRankings(userID uint) error {
+	logger.Info("[ranking.DeleteAllRankings] 删除用户所有排行榜记录", zap.Uint("user_id", userID))
+	
 	if err := s.repo.DeleteAllByUser(userID); err != nil {
+		logger.Error("[ranking.DeleteAllRankings] 删除失败", zap.Uint("user_id", userID), zap.Error(err))
 		return err
 	}
 
@@ -167,6 +224,7 @@ func (s *Service) DeleteAllRankings(userID uint) error {
 		}
 	}
 
+	logger.Info("[ranking.DeleteAllRankings] 删除成功", zap.Uint("user_id", userID))
 	return nil
 }
 

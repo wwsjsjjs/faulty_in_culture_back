@@ -4,23 +4,71 @@
 package chat
 
 import (
-	errcode "faulty_in_culture/go_back/internal/shared/errors"
-	"faulty_in_culture/go_back/internal/shared/response"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
 
+	errcode "faulty_in_culture/go_back/internal/shared/errors"
+	"faulty_in_culture/go_back/internal/shared/response"
+
 	"github.com/gin-gonic/gin"
+	ws "github.com/gorilla/websocket"
 )
 
 // Handler 聊天处理器
 type Handler struct {
-	service *Service
+	service  *Service
+	upgrader ws.Upgrader
 }
 
 // NewHandler 创建聊天处理器
 func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+	return &Handler{
+		service: service,
+		upgrader: ws.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				return true // 允许所有来源（生产环境应该限制）
+			},
+		},
+	}
+}
+
+// WebSocketHandler WebSocket连接处理器
+// @Summary WebSocket实时消息流
+// @Tags 聊天
+// @Success 101
+// @Router /api/chat/ws [get]
+func (h *Handler) WebSocketHandler(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	// 升级HTTP连接为WebSocket
+	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "WebSocket升级失败"})
+		return
+	}
+
+	// 注册客户端
+	client := h.service.ConnectWebSocket(userID, conn)
+
+	// 发送连接成功消息
+	welcomeMsg := map[string]interface{}{
+		"type":    "connected",
+		"user_id": userID,
+		"message": "WebSocket连接成功",
+	}
+	client.Send <- mustMarshal(welcomeMsg)
+
+	// 启动读写goroutine
+	go client.WritePump()
+	go func() {
+		client.ReadPump()
+		// 当ReadPump退出时注销客户端
+		h.service.DisconnectWebSocket(client)
+	}()
 }
 
 // toSessionVO 转换Session为SessionVO
@@ -205,7 +253,7 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	message, err := h.service.SendMessage(userID, uint(sessionID), req.Content)
+	message, messageIndex, err := h.service.SendMessage(userID, uint(sessionID), req.Content)
 	if err != nil {
 		if strings.Contains(err.Error(), "未授权") {
 			response.Error(c, http.StatusForbidden, errcode.Unauthorized)
@@ -218,10 +266,11 @@ func (h *Handler) SendMessage(c *gin.Context) {
 	}
 
 	vo := MessageVO{
-		ID:        message.ID,
-		SessionID: message.SessionID,
-		Content:   message.Content,
-		CreatedAt: message.CreatedAt,
+		ID:           message.ID,
+		SessionID:    message.SessionID,
+		MessageIndex: messageIndex,
+		Content:      message.Content,
+		CreatedAt:    message.CreatedAt,
 	}
 
 	response.SuccessWithMessage(c, "已发送，AI正在思考..", vo)
@@ -295,4 +344,13 @@ func (h *Handler) RecallMessages(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, "撤回成功", nil)
+}
+
+// mustMarshal 将对象序列化为JSON（如果失败则panic）
+func mustMarshal(v interface{}) []byte {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return data
 }

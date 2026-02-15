@@ -4,6 +4,7 @@ import (
 	"faulty_in_culture/go_back/internal/chat"
 	"faulty_in_culture/go_back/internal/infra/config"
 	"faulty_in_culture/go_back/internal/infra/logger"
+	"faulty_in_culture/go_back/internal/ranking"
 	"faulty_in_culture/go_back/internal/savegame"
 	"faulty_in_culture/go_back/internal/user"
 	"fmt"
@@ -52,6 +53,7 @@ func InitDatabase() error {
 	// 自动迁移（简化MVC架构 - 使用各domain的Entity）
 	err = DB.AutoMigrate(
 		&user.Entity{},
+		&ranking.Entity{},
 		&savegame.Entity{},
 		&chat.Session{},
 		&chat.Message{},
@@ -60,7 +62,7 @@ func InitDatabase() error {
 		return fmt.Errorf("failed to migrate database: %v", err)
 	}
 
-	logger.Info("Database migration completed (简化MVC)")
+	logger.Info("数据库表结构迁移完成")
 
 	return nil
 }

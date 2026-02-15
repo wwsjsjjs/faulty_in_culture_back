@@ -362,6 +362,19 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/chat/ws": {
+            "get": {
+                "tags": [
+                    "聊天"
+                ],
+                "summary": "WebSocket实时消息流",
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols"
+                    }
+                }
+            }
+        },
         "/api/login": {
             "post": {
                 "description": "用户通过用户名和密码登录，返回token用于后续认证",
@@ -390,7 +403,7 @@ const docTemplate = `{
                     "200": {
                         "description": "登录成功，返回token和用户信息",
                         "schema": {
-                            "$ref": "#/definitions/user.LoginResponse"
+                            "$ref": "#/definitions/user.AuthResponse"
                         }
                     },
                     "400": {
@@ -622,7 +635,7 @@ const docTemplate = `{
                     "200": {
                         "description": "注册成功，返回用户信息和token",
                         "schema": {
-                            "$ref": "#/definitions/user.RegisterResponse"
+                            "$ref": "#/definitions/user.AuthResponse"
                         }
                     },
                     "400": {
@@ -1058,6 +1071,18 @@ const docTemplate = `{
                 }
             }
         },
+        "user.AuthResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
+                "user": {
+                    "$ref": "#/definitions/user.UserVO"
+                }
+            }
+        },
         "user.LoginRequest": {
             "type": "object",
             "required": [
@@ -1075,18 +1100,6 @@ const docTemplate = `{
                 }
             }
         },
-        "user.LoginResponse": {
-            "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                },
-                "user": {
-                    "$ref": "#/definitions/user.UserVO"
-                }
-            }
-        },
         "user.RegisterRequest": {
             "type": "object",
             "required": [
@@ -1097,23 +1110,6 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "example": "password123"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "player1"
-                }
-            }
-        },
-        "user.RegisterResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "token": {
-                    "type": "string",
-                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 },
                 "username": {
                     "type": "string",

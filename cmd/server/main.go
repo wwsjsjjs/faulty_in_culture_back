@@ -12,6 +12,7 @@ import (
 	"faulty_in_culture/go_back/internal/infra/config"
 	"faulty_in_culture/go_back/internal/infra/db"
 	"faulty_in_culture/go_back/internal/infra/logger"
+	"faulty_in_culture/go_back/internal/infra/ws"
 	"faulty_in_culture/go_back/internal/ranking"
 	"faulty_in_culture/go_back/internal/routes"
 	"faulty_in_culture/go_back/internal/savegame"
@@ -31,7 +32,10 @@ import (
 // @BasePath /
 func main() {
 	// 加载配置文件
-	config.LoadConfig("config.yaml")
+	if err := config.LoadConfig("config.yaml"); err != nil {
+		fmt.Printf("加载配置失败: %v\n", err)
+		os.Exit(1)
+	}
 	cfg := &config.GlobalConfig
 
 	// 初始化日志系统
@@ -41,7 +45,10 @@ func main() {
 	}
 	defer logger.Sync()
 
-	logger.Info("应用启动（RESTful架构）", zap.String("environment", cfg.App.Environment))
+	logger.Info("应用启动（RESTful架构）",
+		zap.String("environment", cfg.App.Environment),
+		zap.String("db_host", cfg.Database.Host),
+		zap.String("redis_host", cfg.Redis.Host))
 
 	// 初始化数据库连接
 	if err := db.InitDatabase(); err != nil {
@@ -73,9 +80,10 @@ func main() {
 	rankingService := ranking.NewService(rankingRepo, userService, cacheInstance)
 	rankingHandler := ranking.NewHandler(rankingService)
 
-	// Chat模块 - AI聊天管理
+	// Chat模块 - AI聊天管理（创建WebSocket管理器）
+	wsManager := ws.NewManager()
 	chatRepo := chat.NewRepository(database)
-	chatService := chat.NewService(chatRepo, chat.NewAIClient(), nil, cacheInstance)
+	chatService := chat.NewService(chatRepo, chat.NewAIClient(), wsManager, cacheInstance)
 	chatHandler := chat.NewHandler(chatService)
 
 	// SaveGame模块 - 存档管理
@@ -94,6 +102,21 @@ func main() {
 	// 启动HTTP服务器
 	gin.SetMode(cfg.App.GinMode)
 	router := gin.Default()
+
+	// 添加CORS中间件（允许跨域访问）
+	router.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
 
 	// 设置路由
 	routes.SetupRoutes(router, handlers)

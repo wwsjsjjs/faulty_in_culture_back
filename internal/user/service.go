@@ -1,11 +1,13 @@
-﻿// Package user - 用户模块业务逻辑层
-// 功能：实现用户注册、登录、认证等业务规则
-// 特点：密码加密、JWT Token生成、缓存管理
-package user
+﻿package user
 
 import (
 	"fmt"
 	"time"
+
+	"faulty_in_culture/go_back/internal/infra/logger"
+	"faulty_in_culture/go_back/internal/shared/errors"
+
+	"go.uber.org/zap"
 )
 
 // ============================================================
@@ -63,20 +65,29 @@ func NewService(repo Repository, hasher PasswordHasher, tokenGen TokenGenerator,
 // 2. 密码必须加密存储
 // 3. 自动设置创建时间和登录时间
 func (s *Service) Register(username, password string) (*Entity, string, error) {
+	logger.Info("[user.Register] 开始注册", zap.String("username", username))
+	
 	// 检查用户名是否存在
 	existUser, err := s.repo.FindByUsername(username)
 	if err == nil && existUser != nil {
-		return nil, "", fmt.Errorf("用户名已存在")
+		logger.Warn("[user.Register] 用户已存在", zap.String("username", username))
+		return nil, "", errors.New(errors.UserAlreadyExists)
 	}
 	if err != nil && err.Error() != "用户不存在" {
+		logger.Error("[user.Register] 查询用户失败", zap.String("username", username), zap.Error(err))
 		return nil, "", err
 	}
 
 	// 密码加密
 	hash, err := s.passwordHasher.Hash(password)
 	if err != nil {
-		return nil, "", fmt.Errorf("密码加密失败")
+		logger.Error("[user.Register] 密码加密失败", zap.Error(err))
+		return nil, "", errors.NewWithMessage(errors.ServerError, "密码加密失败")
 	}
+
+	logger.Info("[user.Register] 密码加密成功",
+		zap.String("username", username),
+		zap.String("password_length", fmt.Sprintf("%d", len(password))))
 
 	// 创建用户实体
 	now := time.Now()
@@ -89,15 +100,19 @@ func (s *Service) Register(username, password string) (*Entity, string, error) {
 
 	// 持久化
 	if err := s.repo.Create(user); err != nil {
-		return nil, "", fmt.Errorf("创建用户失败")
+		logger.Error("[user.Register] 创建用户失败", zap.String("username", username), zap.Error(err))
+		return nil, "", errors.NewWithMessage(errors.ServerError, "创建用户失败")
 	}
+	logger.Info("[user.Register] 用户创建成功", zap.String("username", username), zap.Uint("user_id", user.ID))
 
 	// 生成Token
 	token, err := s.tokenGen.Generate(user.ID, user.Username)
 	if err != nil {
+		logger.Error("[user.Register] 生成token失败", zap.Uint("user_id", user.ID), zap.Error(err))
 		return nil, "", fmt.Errorf("生成token失败: %w", err)
 	}
 
+	logger.Info("[user.Register] 注册完成", zap.String("username", username), zap.Uint("user_id", user.ID))
 	return user, token, nil
 }
 
@@ -105,111 +120,76 @@ func (s *Service) Register(username, password string) (*Entity, string, error) {
 // 业务规则：
 // 1. 验证用户名和密码
 // 2. 更新最后登录时间
-// 3. 使用缓存提高性能
+// 3. 密码验证不使用缓存，确保安全性
 func (s *Service) Login(username, password string) (*Entity, string, error) {
-	cacheKey := fmt.Sprintf("user:username:%s", username)
-
-	// 尝试从缓存获取用户
-	var user *Entity
-	if s.cache != nil {
-		var cachedUser Entity
-		if err := s.cache.Get(cacheKey, &cachedUser); err == nil && cachedUser.ID != 0 {
-			user = &cachedUser
-		}
+	logger.Info("[user.Login] 开始登录", zap.String("username", username))
+	
+	// 从数据库查询用户（不使用缓存，因为需要验证密码hash）
+	user, err := s.repo.FindByUsername(username)
+	if err != nil {
+		logger.Warn("[user.Login] 用户不存在", zap.String("username", username))
+		return nil, "", errors.New(errors.InvalidPassword) // 不暴露用户是否存在
 	}
 
-	// 缓存未命中，从数据库查询
-	if user == nil {
-		var err error
-		user, err = s.repo.FindByUsername(username)
-		if err != nil {
-			return nil, "", fmt.Errorf("用户名或密码错误") // 不暴露用户是否存在
-		}
-
-		// 写入缓存
-		if s.cache != nil {
-			s.cache.Set(cacheKey, user, 24*time.Hour)
-		}
+	// 安全截取密码hash用于日志
+	hashPrefix := user.Password
+	if len(hashPrefix) > 20 {
+		hashPrefix = hashPrefix[:20] + "..."
 	}
+
+	logger.Info("[user.Login] 验证密码",
+		zap.String("username", username),
+		zap.Uint("user_id", user.ID))
 
 	// 验证密码
 	if !s.passwordHasher.Check(password, user.Password) {
-		return nil, "", fmt.Errorf("用户名或密码错误")
+		logger.Warn("[user.Login] 密码验证失败",
+			zap.String("username", username))
+		return nil, "", errors.New(errors.InvalidPassword)
 	}
+
+	logger.Info("[user.Login] 密码验证成功", zap.String("username", username))
 
 	// 更新最后登录时间
 	s.repo.UpdateLastLogin(user.ID)
+	logger.Info("[user.Login] 更新登录时间", zap.Uint("user_id", user.ID))
 
 	// 生成Token
 	token, err := s.tokenGen.Generate(user.ID, user.Username)
 	if err != nil {
+		logger.Error("[user.Login] 生成token失败", zap.Uint("user_id", user.ID), zap.Error(err))
 		return nil, "", fmt.Errorf("生成token失败: %w", err)
 	}
 
+	logger.Info("[user.Login] 登录成功", zap.String("username", username), zap.Uint("user_id", user.ID))
 	return user, token, nil
 }
 
-// GetUsername 获取用户名（供其他Service调用）
-// 用于Service层组合调用模式
+// GetUsername 根据用户ID获取用户名
 func (s *Service) GetUsername(userID uint) (string, error) {
-	// 尝试从缓存获取
-	if s.cache != nil {
-		cacheKey := fmt.Sprintf("user:username:%d", userID)
-		var username string
-		if err := s.cache.Get(cacheKey, &username); err == nil && username != "" {
-			return username, nil
-		}
-	}
-
-	// 从数据库查询
+	logger.Debug("[user.GetUsername] 获取用户名", zap.Uint("user_id", userID))
 	user, err := s.repo.FindByID(userID)
 	if err != nil {
+		logger.Error("[user.GetUsername] 查询失败", zap.Uint("user_id", userID), zap.Error(err))
 		return "", err
 	}
-
-	// 写入缓存（缓存30分钟）
-	if s.cache != nil {
-		cacheKey := fmt.Sprintf("user:username:%d", userID)
-		s.cache.Set(cacheKey, user.Username, 30*time.Minute)
-	}
-
+	logger.Debug("[user.GetUsername] 成功", zap.Uint("user_id", userID), zap.String("username", user.Username))
 	return user.Username, nil
 }
 
-// GetUsernames 批量获取用户名（优化N+1查询）
-// 返回 map[userID]username
+// GetUsernames 批量获取用户名
 func (s *Service) GetUsernames(userIDs []uint) (map[uint]string, error) {
-	if len(userIDs) == 0 {
-		return map[uint]string{}, nil
-	}
-
-	// 去重
-	uniqueIDs := make([]uint, 0, len(userIDs))
-	idSet := make(map[uint]bool)
-	for _, id := range userIDs {
-		if !idSet[id] {
-			uniqueIDs = append(uniqueIDs, id)
-			idSet[id] = true
-		}
-	}
-
-	// 批量查询数据库
-	users, err := s.repo.FindByIDs(uniqueIDs)
+	logger.Debug("[user.GetUsernames] 批量获取用户名", zap.Int("count", len(userIDs)))
+	users, err := s.repo.FindByIDs(userIDs)
 	if err != nil {
+		logger.Error("[user.GetUsernames] 批量查询失败", zap.Int("count", len(userIDs)), zap.Error(err))
 		return nil, err
 	}
 
-	// 构建 userID -> username 映射
-	result := make(map[uint]string, len(users))
+	usernameMap := make(map[uint]string, len(users))
 	for _, user := range users {
-		result[user.ID] = user.Username
-
-		// 写入缓存
-		if s.cache != nil {
-			cacheKey := fmt.Sprintf("user:username:%d", user.ID)
-			s.cache.Set(cacheKey, user.Username, 30*time.Minute)
-		}
+		usernameMap[user.ID] = user.Username
 	}
-
-	return result, nil
+	logger.Debug("[user.GetUsernames] 成功", zap.Int("count", len(users)))
+	return usernameMap, nil
 }
