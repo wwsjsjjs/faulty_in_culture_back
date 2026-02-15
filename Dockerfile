@@ -18,6 +18,9 @@ RUN addgroup -g 1000 appuser && \
 
 WORKDIR /app
 
+# 创建日志目录并分配权限给 appuser
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
+
 # 直接复制预编译的二进制文件（本地交叉编译的产物）
 COPY server .
 
