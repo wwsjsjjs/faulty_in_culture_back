@@ -21,6 +21,9 @@ WORKDIR /app
 # 直接复制预编译的二进制文件（本地交叉编译的产物）
 COPY server .
 
+# 设置执行权限
+RUN chmod +x server
+
 # 复制生产配置
 COPY config.prod.yaml ./config.yaml
 
