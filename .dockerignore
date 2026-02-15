@@ -17,7 +17,6 @@ temp.md
 *~
 
 # 编译输出
-server
 *.exe
 *.exe~
 *.dll
